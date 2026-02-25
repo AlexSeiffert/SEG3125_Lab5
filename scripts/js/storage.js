@@ -1,5 +1,5 @@
-// Storage helpers
-export const KEY = "acs_bookings_v4";
+export const KEY = "acs_bookings_v5";
+
 export function loadBookings() {
   try {
     return JSON.parse(localStorage.getItem(KEY) || "[]");
@@ -7,6 +7,7 @@ export function loadBookings() {
     return [];
   }
 }
+
 export function saveBookings(bookings) {
   localStorage.setItem(KEY, JSON.stringify(bookings));
 }
