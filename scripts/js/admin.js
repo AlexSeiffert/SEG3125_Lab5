@@ -1,27 +1,24 @@
-// Admin logic
 import { loadBookings, saveBookings } from "./storage.js";
-import { parseTimeToMinutes, overlaps } from "./utils.js";
 
-const adminBody = document.getElementById("adminBookingsBody");
-const clearAllBtn = document.getElementById("clearAllBtn");
-
-function renderBookings() {
+export function renderBookings(adminBody) {
   const bookings = loadBookings();
   adminBody.innerHTML = "";
+
   if (bookings.length === 0) {
     adminBody.innerHTML = `<tr><td colspan="8" class="text-secondary">No appointments yet.</td></tr>`;
     return;
   }
+
   for (const b of bookings) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${b.expertName}</td>
       <td>
         <div class="fw-semibold">${b.serviceName}</div>
         <div class="text-secondary small">${b.servicePrice} • ${b.durationLabel}</div>
       </td>
       <td>${b.date}</td>
       <td>${b.startTime}</td>
-      <td>${b.earliestPickupTime}</td>
       <td>${b.pickupTime}</td>
       <td>
         <div class="fw-semibold">${b.name}</div>
@@ -38,18 +35,20 @@ function renderBookings() {
   }
 }
 
-adminBody.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-del]");
-  if (!btn) return;
-  const id = btn.getAttribute("data-del");
-  const bookings = loadBookings().filter((b) => b.id !== id);
-  saveBookings(bookings);
-  renderBookings();
-});
+export function initAdmin(adminBody, clearAllBtn) {
+  adminBody.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-del]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-del");
+    const next = loadBookings().filter((b) => b.id !== id);
+    saveBookings(next);
+    renderBookings(adminBody);
+  });
 
-clearAllBtn.addEventListener("click", () => {
-  saveBookings([]);
-  renderBookings();
-});
+  clearAllBtn.addEventListener("click", () => {
+    saveBookings([]);
+    renderBookings(adminBody);
+  });
 
-renderBookings();
+  renderBookings(adminBody);
+}

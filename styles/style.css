@@ -1,60 +1,86 @@
-:root { --acs-radius: 1rem; }
-
-body { background: #f8f9fa; }
-
-.card, .btn, .form-control, .form-select {
-  border-radius: var(--acs-radius);
+/* styles/style.css */
+:root{
+  --acs-radius: 1rem;
+  --acs-primary: #2563eb;
+  --acs-primary-2: #7c3aed;
+  --acs-bg: #f8fafc;
 }
 
-.shadow-soft { box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.08); }
+body{ background: var(--acs-bg); }
 
-.service-card { cursor: pointer; }
-.service-card:hover { transform: translateY(-2px); transition: .15s ease; }
+.card, .btn, .form-control, .form-select{ border-radius: var(--acs-radius); }
+.shadow-soft{ box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.08); }
 
-/* Mobile spacing improvements */
-main { padding-bottom: 3rem; }
-.section-pad { padding: 1rem 0; }
-@media (min-width: 992px) { .section-pad { padding: 1.25rem 0; } }
+/* Colorful navbar */
+.acs-navbar{
+  background: linear-gradient(90deg, var(--acs-primary), var(--acs-primary-2));
+}
+
+/* Colorful hero */
+.acs-hero{
+  background: linear-gradient(135deg, #ffffff, #eef2ff);
+  border: 1px solid rgba(37,99,235,.12);
+}
+
+/* Mobile spacing */
+main{ padding-bottom: 3rem; }
+.section-pad{ padding: 1rem 0; }
 
 /* Anchor offsets for sticky navbar */
-html { scroll-padding-top: 6.5rem; }
-section, header, #summary, #admin, #experts, #about { scroll-margin-top: 6.5rem; }
+html{ scroll-padding-top: 6.5rem; }
+section, header, #about, #experts, #services, #booking, #summary, #admin{ scroll-margin-top: 6.5rem; }
 
-/* Service card selection affordance */
-.service-option {
+/* Inputs react on focus/hover (iOS-friendly) */
+.acs-input{ transition: .12s ease; }
+.acs-input:focus{
+  border-color: rgba(37,99,235,.8);
+  box-shadow: 0 0 0 .25rem rgba(37,99,235,.2);
+  transform: scale(1.01);
+}
+.acs-input:hover{ border-color: rgba(37,99,235,.35); }
+
+/* Service cards */
+.service-card{ cursor: pointer; }
+.service-card:hover{ transform: translateY(-2px); transition: .15s ease; }
+
+.service-option{
   border: 2px solid transparent;
   transition: .15s ease;
   overflow: hidden;
 }
-.btn-check:focus + .service-option {
+.btn-check:focus + .service-option{
   outline: 0;
-  box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
+  box-shadow: 0 0 0 .25rem rgba(37,99,235,.25);
 }
-.btn-check:checked + .service-option {
-  border-color: #0d6efd; /* Bootstrap primary */
-  box-shadow: 0 .75rem 1.5rem rgba(13,110,253,.15);
+.btn-check:checked + .service-option{
+  border-color: var(--acs-primary);
+  box-shadow: 0 .75rem 1.5rem rgba(37,99,235,.15);
 }
-.selected-badge { display: none; }
-.btn-check:checked + .service-option .selected-badge { display: inline-flex; }
+.selected-badge{ display: none; }
+.btn-check:checked + .service-option .selected-badge{ display: inline-flex; }
 
-/* Make images less tall on mobile */
-.card-img-top {
-  max-height: 160px;
+/* Disable services until expert confirmed */
+#servicesGrid[aria-disabled="true"]{
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* Expert selection cards */
+.expert-option{
+  border: 2px solid rgba(0,0,0,.06);
+  transition: .15s ease;
+}
+.btn-check:checked + .expert-option{
+  border-color: var(--acs-primary);
+  box-shadow: 0 .75rem 1.5rem rgba(37,99,235,.12);
+}
+
+/* Make service images reasonable on iOS */
+.card-img-top{
+  height: 170px;
+  width: 100%;
   object-fit: cover;
 }
-@media (min-width: 992px) {
-  .card-img-top { max-height: 190px; }
-}
-
-/* Summary always visible on desktop */
-.summary-fixed-lg { position: static; }
-
-@media (min-width: 992px) {
-  .summary-fixed-lg{
-    position: fixed;
-    right: 1rem;
-    bottom: 1rem;                 /* stays on screen while scrolling */
-    width: clamp(280px, 32vw, 360px);
-    z-index: 1020;
-  }
+@media (min-width: 992px){
+  .card-img-top{ height: 190px; }
 }
