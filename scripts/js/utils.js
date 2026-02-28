@@ -1,7 +1,14 @@
+// scripts/js/utils.js
 export function scrollToId(id, behavior = "smooth") {
   const el = document.getElementById(id);
   if (!el) return;
   el.scrollIntoView({ behavior, block: "start" });
+}
+
+export function setEnabledAnchor(a, enabled) {
+  if (!a) return;
+  a.classList.toggle("disabled", !enabled);
+  a.setAttribute("aria-disabled", enabled ? "false" : "true");
 }
 
 export function parseTimeToMinutes(t) {
@@ -32,3 +39,77 @@ export function isBusinessDayStr(yyyyMmDd) {
   const day = d.getDay(); // 0=Sun ... 6=Sat
   return day >= 1 && day <= 6;
 }
+
+/* Optional: sidebar follow (only runs if DOM exists) */
+export function sidebarFollow() {
+  const LG_MIN = 992;
+  const margin = 16;
+  const sidebar = document.getElementById("sidebar");
+  const col = document.getElementById("sidebarCol");
+  const spacer = document.getElementById("sidebarSpacer");
+  const nav = document.querySelector(".navbar.sticky-top");
+  if (!sidebar || !col || !spacer) return;
+
+  function reset() {
+    sidebar.style.position = "";
+    sidebar.style.left = "";
+    sidebar.style.width = "";
+    sidebar.style.bottom = "";
+    sidebar.style.top = "";
+    sidebar.style.zIndex = "";
+    spacer.style.height = "0px";
+  }
+
+  function place() {
+    if (window.innerWidth < LG_MIN) return reset();
+
+    const navH = nav ? nav.getBoundingClientRect().height : 0;
+    const sidebarH = sidebar.offsetHeight;
+    spacer.style.height = sidebarH + "px";
+
+    const colRect = col.getBoundingClientRect();
+    const colTop = colRect.top + window.scrollY;
+    const colLeft = colRect.left + window.scrollX;
+    const colWidth = colRect.width;
+    const colBottom = colTop + col.offsetHeight;
+
+    const viewportTop = window.scrollY + navH + margin;
+    if (viewportTop < colTop) return reset();
+
+    const desiredTop = window.scrollY + window.innerHeight - margin - sidebarH;
+    const maxTop = colBottom - margin - sidebarH;
+
+    if (desiredTop >= maxTop) {
+      sidebar.style.position = "absolute";
+      sidebar.style.left = "0";
+      sidebar.style.width = "100%";
+      sidebar.style.top = (maxTop - colTop) + "px";
+      sidebar.style.bottom = "";
+      sidebar.style.zIndex = "";
+      return;
+    }
+
+    sidebar.style.position = "fixed";
+    sidebar.style.left = colLeft + "px";
+    sidebar.style.width = colWidth + "px";
+    sidebar.style.bottom = margin + "px";
+    sidebar.style.top = "";
+    sidebar.style.zIndex = "1010";
+  }
+
+  
+
+  window.addEventListener("scroll", place, { passive: true });
+  window.addEventListener("resize", place);
+  window.addEventListener("load", place);
+  place();
+}
+export function showToast(message) {
+    const toastEl = document.getElementById("acsToast");
+    const bodyEl = document.getElementById("acsToastBody");
+    if (!toastEl || !bodyEl || !window.bootstrap?.Toast) return;
+
+    bodyEl.textContent = message;
+    const t = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 1800 });
+    t.show();
+  }

@@ -22,6 +22,14 @@ body{ background: var(--acs-bg); }
   border: 1px solid rgba(37,99,235,.12);
 }
 
+/* Hero image sizing */
+.hero-media{ min-height: 260px; }
+.hero-img{ object-fit: cover; }
+
+@media (min-width: 992px) {
+  .hero-media { min-height: 420px; } /* match text block height better */
+}
+
 /* Mobile spacing */
 main{ padding-bottom: 3rem; }
 .section-pad{ padding: 1rem 0; }

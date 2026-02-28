@@ -7,6 +7,7 @@ export function getSelectedService(serviceRadios, serviceMap) {
 export function setServicesEnabled({ enabled, servicesGrid, lockedMsg, serviceRadios }) {
   servicesGrid.setAttribute("aria-disabled", enabled ? "false" : "true");
   lockedMsg.classList.toggle("d-none", enabled);
+
   serviceRadios.forEach((r) => (r.disabled = !enabled));
 
   if (!enabled) {
