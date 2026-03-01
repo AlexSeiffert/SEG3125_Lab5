@@ -4,6 +4,7 @@ import { initExperts } from "./experts.js";
 import { setServicesEnabled } from "./services.js";
 import { initBookingFlow } from "./booking.js";
 import { scrollToId } from "./utils.js";
+import { validatePhone } from "./validation.js";
 
 const SERVICE_MAP = {
   "svc-basic": {
@@ -189,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setConfirmed: () => {},
     };
   }
-
+  document.getElementById("phone").addEventListener("input", validatePhone);
   // Initialize booking flow logic
   try {
     initBookingFlow({
