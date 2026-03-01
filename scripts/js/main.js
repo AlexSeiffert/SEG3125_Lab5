@@ -4,6 +4,7 @@ import { initExperts } from "./experts.js";
 import { setServicesEnabled } from "./services.js";
 import { initBookingFlow } from "./booking.js";
 import { scrollToId } from "./utils.js";
+import { validatePhone } from "./validation.js";
 
 const SERVICE_MAP = {
   "svc-basic":  { name: "Basic Tune-Up", price: "$79",  durationLabel: "~60 min",  durationMinutes: 60  },
@@ -186,4 +187,6 @@ document.addEventListener("DOMContentLoaded", () => {
   } catch (e) {
     console.error("initBookingFlow failed:", e);
   }
+
+  document.getElementById("phone").addEventListener("input", validatePhone);
 });
