@@ -1,94 +1,139 @@
 /* styles/style.css */
-:root{
+:root {
   --acs-radius: 1rem;
   --acs-primary: #2563eb;
   --acs-primary-2: #7c3aed;
   --acs-bg: #f8fafc;
 }
 
-body{ background: var(--acs-bg); }
+body {
+  background: var(--acs-bg);
+}
 
-.card, .btn, .form-control, .form-select{ border-radius: var(--acs-radius); }
-.shadow-soft{ box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.08); }
+.card,
+.btn,
+.form-control,
+.form-select {
+  border-radius: var(--acs-radius);
+}
+.shadow-soft {
+  box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
+}
 
 /* Colorful navbar */
-.acs-navbar{
+.acs-navbar {
   background: linear-gradient(90deg, var(--acs-primary), var(--acs-primary-2));
 }
 
 /* Colorful hero */
-.acs-hero{
+.acs-hero {
   background: linear-gradient(135deg, #ffffff, #eef2ff);
-  border: 1px solid rgba(37,99,235,.12);
+  border: 1px solid rgba(37, 99, 235, 0.12);
 }
 
 /* Hero image sizing */
-.hero-media{ min-height: 260px; }
-.hero-img{ object-fit: cover; }
+.hero-media {
+  min-height: 260px;
+}
+.hero-img {
+  object-fit: cover;
+}
 
 @media (min-width: 992px) {
-  .hero-media { min-height: 420px; } /* match text block height better */
+  .hero-media {
+    min-height: 420px;
+  } /* match text block height better */
 }
 
 /* Mobile spacing */
-main{ padding-bottom: 3rem; }
-.section-pad{ padding: 1rem 0; }
+main {
+  padding-bottom: 3rem;
+}
+.section-pad {
+  padding: 1rem 0;
+}
 
 /* Anchor offsets for sticky navbar */
-html{ scroll-padding-top: 6.5rem; }
-section, header, #about, #experts, #services, #booking, #summary, #admin{ scroll-margin-top: 6.5rem; }
+html {
+  scroll-padding-top: 6.5rem;
+}
+section,
+header,
+#about,
+#experts,
+#services,
+#booking,
+#summary,
+#admin {
+  scroll-margin-top: 6.5rem;
+}
 
 /* Inputs react on focus/hover (iOS-friendly) */
-.acs-input{ transition: .12s ease; }
-.acs-input:focus{
-  border-color: rgba(37,99,235,.8);
-  box-shadow: 0 0 0 .25rem rgba(37,99,235,.2);
+.acs-input {
+  transition: 0.12s ease;
+}
+.acs-input:focus {
+  border-color: rgba(37, 99, 235, 0.8);
+  box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.2);
   transform: scale(1.01);
 }
-.acs-input:hover{ border-color: rgba(37,99,235,.35); }
+.acs-input:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+}
 
 /* Service cards */
-.service-card{ cursor: pointer; }
-.service-card:hover{ transform: translateY(-2px); transition: .15s ease; }
+.service-card {
+  cursor: pointer;
+}
+.service-card:hover {
+  transform: translateY(-2px);
+  transition: 0.15s ease;
+}
 
-.service-option{
+.service-option {
   border: 2px solid transparent;
-  transition: .15s ease;
+  transition: 0.15s ease;
   overflow: hidden;
 }
-.btn-check:focus + .service-option{
+.btn-check:focus + .service-option {
   outline: 0;
-  box-shadow: 0 0 0 .25rem rgba(37,99,235,.25);
+  box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25);
 }
-.btn-check:checked + .service-option{
+.btn-check:checked + .service-option {
   border-color: var(--acs-primary);
-  box-shadow: 0 .75rem 1.5rem rgba(37,99,235,.15);
+  box-shadow: 0 0.75rem 1.5rem rgba(37, 99, 235, 0.15);
 }
-.selected-badge{ display: none; }
-.btn-check:checked + .service-option .selected-badge{ display: inline-flex; }
+.selected-badge {
+  display: none;
+}
+.btn-check:checked + .service-option .selected-badge {
+  display: inline-flex;
+}
 
 /* Disable services until expert confirmed */
-#servicesGrid[aria-disabled="true"]{
-  opacity: .55;
+#servicesGrid[aria-disabled="true"] {
+  opacity: 0.55;
   pointer-events: none;
 }
 
 /* Expert selection cards */
-.expert-option{
-  border: 2px solid rgba(0,0,0,.06);
-  transition: .15s ease;
+.expert-option {
+  border: 2px solid rgba(0, 0, 0, 0.06);
+  transition: 0.15s ease;
 }
-.btn-check:checked + .expert-option{
+.btn-check:checked + .expert-option {
   border-color: var(--acs-primary);
-  box-shadow: 0 .75rem 1.5rem rgba(37,99,235,.12);
+  box-shadow: 0 0.75rem 1.5rem rgba(37, 99, 235, 0.12);
 }
 
 /* Make service images reasonable on iOS */
-.card-img-top{
+.card-img-top {
   height: 170px;
   width: 100%;
   object-fit: cover;
 }
-@media (min-width: 992px){
-  .card-img-top{ height: 190px; }
+@media (min-width: 992px) {
+  .card-img-top {
+    height: 190px;
+  }
 }

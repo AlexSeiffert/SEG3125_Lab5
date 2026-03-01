@@ -1,23 +1,42 @@
-// scripts/js/main.js
+// Main entry point for app
 import { initAdmin, renderBookings } from "./admin.js";
 import { initExperts } from "./experts.js";
 import { setServicesEnabled } from "./services.js";
 import { initBookingFlow } from "./booking.js";
 import { scrollToId } from "./utils.js";
-import { validatePhone } from "./validation.js";
 
 const SERVICE_MAP = {
-  "svc-basic":  { name: "Basic Tune-Up", price: "$79",  durationLabel: "~60 min",  durationMinutes: 60  },
-  "svc-full":   { name: "Full Tune-Up",  price: "$149", durationLabel: "~120 min", durationMinutes: 120 },
-  "svc-flat":   { name: "Flat Repair",   price: "$25+", durationLabel: "~30 min",  durationMinutes: 30  },
-  "svc-brakes": { name: "Brake Service", price: "$35+", durationLabel: "~30–45 min", durationMinutes: 45 }
+  "svc-basic": {
+    name: "Basic Tune-Up",
+    price: "$79",
+    durationLabel: "~60 min",
+    durationMinutes: 60,
+  },
+  "svc-full": {
+    name: "Full Tune-Up",
+    price: "$149",
+    durationLabel: "~120 min",
+    durationMinutes: 120,
+  },
+  "svc-flat": {
+    name: "Flat Repair",
+    price: "$25+",
+    durationLabel: "~30 min",
+    durationMinutes: 30,
+  },
+  "svc-brakes": {
+    name: "Brake Service",
+    price: "$35+",
+    durationLabel: "~30–45 min",
+    durationMinutes: 45,
+  },
 };
 
 const EXPERT_MAP = {
-  "exp-alex":   { name: "Alex Nguyen" },
-  "exp-maya":   { name: "Maya Patel" },
+  "exp-alex": { name: "Alex Nguyen" },
+  "exp-maya": { name: "Maya Patel" },
   "exp-jordan": { name: "Jordan Lee" },
-  "exp-sofia":  { name: "Sofia Romero" }
+  "exp-sofia": { name: "Sofia Romero" },
 };
 
 const TIMES = { OPEN_MIN: 10 * 60, CLOSE_MIN: 18 * 60, STEP_MIN: 15 };
@@ -25,39 +44,51 @@ const TIMES = { OPEN_MIN: 10 * 60, CLOSE_MIN: 18 * 60, STEP_MIN: 15 };
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ---------------- Tooltips ----------------
+  // Initialize Bootstrap tooltips
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
-    try { new bootstrap.Tooltip(el); } catch {}
+    try {
+      new bootstrap.Tooltip(el);
+    } catch {}
   });
 
-  // ---------------- DOM: Experts ----------------
-  const expertRadios = Array.from(document.querySelectorAll('input[name="expert"]'));
+  // Get DOM elements for expert selection
+  const expertRadios = Array.from(
+    document.querySelectorAll('input[name="expert"]'),
+  );
   const confirmExpertBtn = $("confirmExpertBtn");
   const expertConfirmModalEl = $("expertConfirmModal");
   const expertModalNameEl = $("expertModalName");
 
-  // ---------------- DOM: Services ----------------
+  // Get DOM elements for services
   const servicesGrid = $("servicesGrid");
   const servicesLockedMsg = $("servicesLockedMsg");
-  const serviceRadios = Array.from(document.querySelectorAll('input[name="service"]'));
+  const serviceRadios = Array.from(
+    document.querySelectorAll('input[name="service"]'),
+  );
   const btnNextService = $("btnNextService");
 
-  // ---------------- DOM: Booking ----------------
+  // Get DOM elements for booking
   const dateEl = $("date");
   const timeEl = $("time");
   const pickupEl = $("pickup");
   const earliestPickupEl = $("earliestPickup");
   const pickupHintEl = $("pickupHint");
   const dateHelpEl = $("dateHelp");
-
   const btnNextSchedule = $("btnNextSchedule");
+
+  // Get DOM elements for contact info
   const nameEl = $("name");
   const phoneEl = $("phone");
   const emailEl = $("email");
   const notesEl = $("notes");
-  const confirmBtn = $("confirmBtn");
-  const formAlert = $("formAlert");
+  const btnNextContact = $("btnNextContact");
+  const contactFormAlert = $("contactFormAlert");
 
+  // Get DOM elements for payment
+  const btnNextPayment = $("btnNextPayment");
+  const paymentFormAlert = $("paymentFormAlert");
+
+  // Get DOM elements for summary
   const summaryEls = {
     expertLine: $("summaryExpertLine"),
     serviceLine: $("summaryServiceLine"),
@@ -66,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pickupLine: $("summaryPickupLine"),
   };
 
+  // Get DOM elements for modals
   const confirmModalEls = {
     confirmModalEl: $("confirmModal"),
     modalExpert: $("modalExpert"),
@@ -76,11 +108,11 @@ document.addEventListener("DOMContentLoaded", () => {
     modalName: $("modalName"),
   };
 
-  // ---------------- DOM: Admin (optional) ----------------
+  // Get DOM elements for admin
   const adminBody = $("adminBookingsBody");
   const clearAllBtn = $("clearAllBtn");
 
-  // ---------------- Critical DOM validation (don’t over-abort) ----------------
+  // Validate required DOM elements
   const criticalMissing = [];
   if (!confirmExpertBtn) criticalMissing.push("#confirmExpertBtn");
   if (expertRadios.length === 0) criticalMissing.push('input[name="expert"]');
@@ -89,18 +121,21 @@ document.addEventListener("DOMContentLoaded", () => {
   if (serviceRadios.length === 0) criticalMissing.push('input[name="service"]');
 
   if (criticalMissing.length) {
-    console.error("Startup aborted. Missing critical DOM nodes:", criticalMissing);
+    console.error(
+      "Startup aborted. Missing critical DOM nodes:",
+      criticalMissing,
+    );
     return;
   }
 
-  // ---------------- Admin init (optional; don’t block UI if missing) ----------------
+  // Initialize admin table
   try {
     if (adminBody && clearAllBtn) initAdmin(adminBody, clearAllBtn);
   } catch (e) {
     console.warn("initAdmin failed (ignored):", e);
   }
 
-  // ---------------- Lock services initially ----------------
+  // Lock services until expert is confirmed
   try {
     setServicesEnabled({
       enabled: false,
@@ -112,15 +147,16 @@ document.addEventListener("DOMContentLoaded", () => {
     console.warn("setServicesEnabled failed (ignored):", e);
   }
 
-  // ---------------- Always keep Step 1 button reactive ----------------
+  // Enable/disable confirm mechanic button
   const updateConfirmMechanicBtn = () => {
-    // enabled when ANY expert is selected
     confirmExpertBtn.disabled = !expertRadios.some((r) => r.checked);
   };
-  expertRadios.forEach((r) => r.addEventListener("change", updateConfirmMechanicBtn));
-  updateConfirmMechanicBtn(); // initial state
+  expertRadios.forEach((r) =>
+    r.addEventListener("change", updateConfirmMechanicBtn),
+  );
+  updateConfirmMechanicBtn();
 
-  // ---------------- Experts init ----------------
+  // Initialize expert selection
   let expertApi = null;
   try {
     expertApi = initExperts({
@@ -130,15 +166,12 @@ document.addEventListener("DOMContentLoaded", () => {
       confirmModalEl: expertConfirmModalEl,
       modalNameEl: expertModalNameEl,
       onConfirmed: () => {
-        // Unlock services
         setServicesEnabled({
           enabled: true,
           servicesGrid,
           lockedMsg: servicesLockedMsg,
           serviceRadios,
         });
-
-        // UX: move user to Step 2
         setTimeout(() => scrollToId("services"), 200);
       },
     });
@@ -146,24 +179,24 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("initExperts failed:", e);
   }
 
-  // Fallback API so booking flow can still run (and not crash main.js)
+  // Fallback expert API if init fails
   if (!expertApi) {
     expertApi = {
       isConfirmed: () => false,
       getSelected: () => null,
       getSelectedId: () => null,
       getSelectedName: () => "",
-      setConfirmed: () => {}
+      setConfirmed: () => {},
     };
   }
 
-  // ---------------- Booking flow init ----------------
+  // Initialize booking flow logic
   try {
     initBookingFlow({
       SERVICE_MAP,
       TIMES,
       expertApi,
-      expertMap: EXPERT_MAP, // some booking.js versions use this
+      expertMap: EXPERT_MAP,
       serviceRadios,
       btnNextService,
       btnNextSchedule,
@@ -177,16 +210,16 @@ document.addEventListener("DOMContentLoaded", () => {
       phoneEl,
       emailEl,
       notesEl,
-      confirmBtn,
-      formAlert,
+      btnNextContact,
+      btnNextPayment,
+      formAlert: contactFormAlert,
       summaryEls,
       confirmModalEls,
       adminBody,
       renderBookings,
+      expertRadios,
     });
   } catch (e) {
     console.error("initBookingFlow failed:", e);
   }
-
-  document.getElementById("phone").addEventListener("input", validatePhone);
 });

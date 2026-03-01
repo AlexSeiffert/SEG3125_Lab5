@@ -1,5 +1,7 @@
+// Admin booking management functions
 import { loadBookings, saveBookings } from "./storage.js";
 
+// Render all bookings in the admin table
 export function renderBookings(adminBody) {
   const bookings = loadBookings();
   adminBody.innerHTML = "";
@@ -35,6 +37,7 @@ export function renderBookings(adminBody) {
   }
 }
 
+// Initialize admin controls and event listeners
 export function initAdmin(adminBody, clearAllBtn) {
   adminBody.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-del]");

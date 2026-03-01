@@ -1,5 +1,6 @@
-// Sidebar follow logic
+// Sidebar sticky/follow logic
 (function sidebarFollow() {
+  // Handles sidebar positioning on scroll and resize
   const LG_MIN = 992;
   const margin = 16;
   const sidebar = document.getElementById("sidebar");
