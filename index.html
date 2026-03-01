@@ -759,6 +759,8 @@
                   </div>
                 </div>
               </div>
+
+              <!-- CONTACT INFO -->
               <div id="contact" class="card shadow-soft mb-3">
                 <div class="card-body">
                   <h3 class="h5 mb-3">Your contact info</h3>
@@ -830,7 +832,7 @@
                   </div>
 
                   <div
-                    id="formAlert"
+                    id="contactFormAlert"
                     class="alert alert-warning mt-3 d-none"
                     role="alert"
                   ></div>
@@ -845,70 +847,95 @@
                       <i class="bi bi-check2-circle me-2"></i>Confirm booking
                     </button>
                     <p class="small text-secondary mt-2 mb-0">
-                      After confirmation, you’ll be scrolled to the Summary
+                      After confirmation, you'll be scrolled to the Summary
                       (Step 4).
                     </p>
                   </div>
                 </div>
               </div>
+
+              <!-- PAYMENT INFO -->
               <div id="payment" class="card shadow-soft">
                 <div class="card-body">
-                  <h3 class="h5 mb-3">3) Payment Info</h3>
+                  <h3 class="h5 mb-3">Payment info</h3>
 
                   <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                      <label class="form-label fw-semibold" for="name">
-                        <i class="bi bi-person me-1"></i>Card Number
+                    <div class="col-12">
+                      <label
+                        class="form-label fw-semibold"
+                        for="cardholderName"
+                      >
+                        <i class="bi bi-person me-1"></i>Cardholder name
                       </label>
                       <input
-                        class="form-control"
-                        id="cardNumber"
+                        class="form-control acs-input"
+                        id="cardholderName"
                         type="text"
-                        placeholder="1234 5678 9012 3456"
+                        placeholder="Alex Chen"
                         required
                       />
                     </div>
 
-                    <div class="row g-3">
-                      <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" for="expirationDate">
-                          <i class="bi bi-calendar me-1"></i>Expiration date
-                        </label>
-                        <input
-                          class="form-control"
-                          id="expirationDate"
-                          type="text"
-                          placeholder="MM/YY"
-                          pattern="^(0[1-9]|1[0-2])\/\d{2}$"
-                          maxlength="5"
-                          required
-                        />
-                      </div>
-                      <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" for="cvc">
-                          <i class="bi bi-lock me-1"></i>CVC
-                        </label>
-                        <input
-                          class="form-control"
-                          id="cvc"
-                          type="number"
-                          placeholder="123"
-                          min="100"
-                          max="9999"
-                          required
-                        />
-                      </div>
+                    <div class="col-12">
+                      <label class="form-label fw-semibold" for="cardNumber">
+                        <i class="bi bi-credit-card me-1"></i>Card number
+                      </label>
+                      <input
+                        class="form-control acs-input"
+                        id="cardNumber"
+                        type="text"
+                        placeholder="1234 5678 9012 3456"
+                        inputmode="numeric"
+                        maxlength="19"
+                        required
+                      />
                     </div>
 
+                    <div class="col-12 col-md-6">
+                      <label
+                        class="form-label fw-semibold"
+                        for="expirationDate"
+                      >
+                        <i class="bi bi-calendar me-1"></i>Expiration date
+                      </label>
+                      <input
+                        class="form-control acs-input"
+                        id="expirationDate"
+                        type="text"
+                        placeholder="MM/YY"
+                        pattern="^(0[1-9]|1[0-2])\/\d{2}$"
+                        maxlength="5"
+                        inputmode="numeric"
+                        required
+                      />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-semibold" for="cvc">
+                        <i class="bi bi-lock me-1"></i>CVC
+                      </label>
+                      <input
+                        class="form-control acs-input"
+                        id="cvc"
+                        type="text"
+                        inputmode="numeric"
+                        placeholder="123"
+                        minlength="3"
+                        maxlength="4"
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div
-                    id="formAlert"
+                    id="paymentFormAlert"
                     class="alert alert-warning mt-3 d-none"
                     role="alert"
                   ></div>
 
                   <div class="mt-4">
                     <button
-                      id="confirmBtn"
+                      id="paymentConfirmBtn"
                       class="btn btn-primary btn-lg w-100 shadow-soft"
                       type="button"
                       disabled
@@ -921,7 +948,8 @@
                     </p>
                   </div>
                 </div>
-              </section>
+              </div>
+            </section>
           </div>
         </div>
 

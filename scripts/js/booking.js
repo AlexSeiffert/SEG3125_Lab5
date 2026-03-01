@@ -5,7 +5,7 @@ import {
   isWithinHours,
   overlaps,
   isBusinessDayStr,
-  scrollToId
+  scrollToId,
 } from "./utils.js";
 
 import { getSelectedService } from "./services.js";
@@ -33,7 +33,14 @@ export function initBookingFlow(ctx) {
     summaryEls,
     confirmModalEls,
     adminBody,
-    renderBookings
+    renderBookings,
+    // Payment section
+    cardholderNameEl,
+    cardNumberEl,
+    expirationDateEl,
+    cvcEl,
+    paymentConfirmBtn,
+    paymentFormAlert,
   } = ctx;
 
   const { OPEN_MIN, CLOSE_MIN, STEP_MIN } = TIMES;
@@ -53,7 +60,14 @@ export function initBookingFlow(ctx) {
     formAlert.textContent = "";
   }
 
-  function buildTimeOptions(selectEl, startMin, endMin, stepMin, includeBlank, blankLabel) {
+  function buildTimeOptions(
+    selectEl,
+    startMin,
+    endMin,
+    stepMin,
+    includeBlank,
+    blankLabel,
+  ) {
     selectEl.innerHTML = "";
     if (includeBlank) {
       const opt = document.createElement("option");
@@ -71,7 +85,9 @@ export function initBookingFlow(ctx) {
   }
 
   function isDateValid() {
-    return dateEl.value && dateEl.checkValidity() && isBusinessDayStr(dateEl.value);
+    return (
+      dateEl.value && dateEl.checkValidity() && isBusinessDayStr(dateEl.value)
+    );
   }
 
   function isTimeValid() {
@@ -92,14 +108,29 @@ export function initBookingFlow(ctx) {
     const earliest = computeEarliestPickupMinutes();
     if (earliest === null) {
       earliestPickupEl.textContent = "—";
-      buildTimeOptions(pickupEl, OPEN_MIN, CLOSE_MIN, STEP_MIN, true, "Auto (earliest pickup)");
+      buildTimeOptions(
+        pickupEl,
+        OPEN_MIN,
+        CLOSE_MIN,
+        STEP_MIN,
+        true,
+        "Auto (earliest pickup)",
+      );
       pickupHintEl.textContent = "";
       return;
     }
     const earliestStr = minutesToTimeStr(earliest);
     earliestPickupEl.textContent = earliestStr;
-    buildTimeOptions(pickupEl, earliest, CLOSE_MIN, STEP_MIN, true, `Auto (${earliestStr})`);
-    pickupHintEl.textContent = "Pickup must be at/after earliest pickup and within 10:00–18:00 (15-min steps).";
+    buildTimeOptions(
+      pickupEl,
+      earliest,
+      CLOSE_MIN,
+      STEP_MIN,
+      true,
+      `Auto (${earliestStr})`,
+    );
+    pickupHintEl.textContent =
+      "Pickup must be at/after earliest pickup and within 10:00–18:00 (15-min steps).";
   }
 
   function isPickupValidOrEmpty(earliestMin) {
@@ -166,7 +197,8 @@ export function initBookingFlow(ctx) {
 
   function createBookingOrError() {
     const ex = expertApi.getSelected();
-    if (!ex || !expertApi.isConfirmed()) return { error: "Please confirm a mechanic first." };
+    if (!ex || !expertApi.isConfirmed())
+      return { error: "Please confirm a mechanic first." };
 
     const svc = getSelectedService(serviceRadios, SERVICE_MAP);
     if (!svc) return { error: "Please select a service." };
@@ -177,28 +209,46 @@ export function initBookingFlow(ctx) {
       return { error: "Sunday is not available. Please choose Mon–Sat." };
     }
 
-    if (!isDateValid()) return { error: "Please select a valid future date (Mon–Sat only)." };
-    if (!isTimeValid()) return { error: "Please select a start time within 10:00–18:00." };
+    if (!isDateValid())
+      return { error: "Please select a valid future date (Mon–Sat only)." };
+    if (!isTimeValid())
+      return { error: "Please select a start time within 10:00–18:00." };
 
     const startMin = parseTimeToMinutes(timeEl.value);
     const endMin = startMin + svc.durationMinutes;
-    if (endMin > CLOSE_MIN) return { error: "This service would end after 18:00. Choose an earlier start time." };
+    if (endMin > CLOSE_MIN)
+      return {
+        error:
+          "This service would end after 18:00. Choose an earlier start time.",
+      };
 
     const earliestPickupStr = minutesToTimeStr(endMin);
     let pickupStr = pickupEl.value || earliestPickupStr;
 
     const pickupMin = parseTimeToMinutes(pickupStr);
     if (pickupMin === null || pickupMin < endMin) {
-      return { error: `Pickup must be at/after earliest pickup (${earliestPickupStr}).` };
+      return {
+        error: `Pickup must be at/after earliest pickup (${earliestPickupStr}).`,
+      };
     }
 
-    if (/\d/.test(nameEl.value)) return { error: "Name cannot contain numbers." };
-    if (!(nameEl.checkValidity() && phoneEl.checkValidity() && emailEl.checkValidity())) {
+    if (/\d/.test(nameEl.value))
+      return { error: "Name cannot contain numbers." };
+    if (
+      !(
+        nameEl.checkValidity() &&
+        phoneEl.checkValidity() &&
+        emailEl.checkValidity()
+      )
+    ) {
       return { error: "Please complete your contact info (name/phone/email)." };
     }
 
     const conflict = wouldConflict(dateEl.value, startMin, endMin);
-    if (conflict) return { error: `Time conflict: another appointment overlaps (${conflict.startTime}–${conflict.endTime}).` };
+    if (conflict)
+      return {
+        error: `Time conflict: another appointment overlaps (${conflict.startTime}–${conflict.endTime}).`,
+      };
 
     return {
       booking: {
@@ -218,15 +268,22 @@ export function initBookingFlow(ctx) {
         phone: phoneEl.value.trim(),
         email: emailEl.value.trim(),
         notes: (notesEl.value || "").trim(),
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     };
   }
 
   function rebuildStartTimes() {
     const svc = getSelectedService(serviceRadios, SERVICE_MAP);
-    const maxStart = svc ? (CLOSE_MIN - svc.durationMinutes) : CLOSE_MIN;
-    buildTimeOptions(timeEl, OPEN_MIN, maxStart, STEP_MIN, true, "Select a time");
+    const maxStart = svc ? CLOSE_MIN - svc.durationMinutes : CLOSE_MIN;
+    buildTimeOptions(
+      timeEl,
+      OPEN_MIN,
+      maxStart,
+      STEP_MIN,
+      true,
+      "Select a time",
+    );
   }
 
   function updateControls() {
@@ -240,22 +297,87 @@ export function initBookingFlow(ctx) {
     updateEarliestPickupUI();
 
     const hasSchedule = isDateValid() && isTimeValid();
-    setEnabledAnchor(btnNextSchedule, expertApi.isConfirmed() && !!svc && hasSchedule);
+    setEnabledAnchor(
+      btnNextSchedule,
+      expertApi.isConfirmed() && !!svc && hasSchedule,
+    );
 
     const earliest = computeEarliestPickupMinutes();
     const pickupOK = earliest === null ? true : isPickupValidOrEmpty(earliest);
 
-    confirmBtn.disabled = !(expertApi.isConfirmed() && !!svc && hasSchedule && pickupOK && nameEl.checkValidity() && phoneEl.checkValidity() && emailEl.checkValidity() && !/\d/.test(nameEl.value));
+    confirmBtn.disabled = !(
+      expertApi.isConfirmed() &&
+      !!svc &&
+      hasSchedule &&
+      pickupOK &&
+      nameEl.checkValidity() &&
+      phoneEl.checkValidity() &&
+      emailEl.checkValidity() &&
+      !/\d/.test(nameEl.value)
+    );
+
+    // Payment section validation
+    let paymentValid = true;
+    if (cardholderNameEl && cardNumberEl && expirationDateEl && cvcEl) {
+      paymentValid =
+        cardholderNameEl.value.trim().length > 0 &&
+        cardNumberEl.value.replace(/\s+/g, "").length >= 13 &&
+        /^\d{4} \d{4} \d{4} \d{4}$/.test(cardNumberEl.value) &&
+        /^(0[1-9]|1[0-2])\/\d{2}$/.test(expirationDateEl.value) &&
+        /^[0-9]{3,4}$/.test(cvcEl.value);
+      paymentConfirmBtn.disabled = !paymentValid;
+    }
 
     updateSummary();
   }
 
   // Events
+  // Payment section events
+  if (
+    cardholderNameEl &&
+    cardNumberEl &&
+    expirationDateEl &&
+    cvcEl &&
+    paymentConfirmBtn
+  ) {
+    [cardholderNameEl, cardNumberEl, expirationDateEl, cvcEl].forEach((el) => {
+      el.addEventListener("input", updateControls);
+    });
+
+    paymentConfirmBtn.addEventListener("click", () => {
+      paymentFormAlert.classList.add("d-none");
+      if (!cardholderNameEl.value.trim()) {
+        paymentFormAlert.textContent = "Cardholder name required.";
+        paymentFormAlert.classList.remove("d-none");
+        return;
+      }
+      if (!/^\d{4} \d{4} \d{4} \d{4}$/.test(cardNumberEl.value)) {
+        paymentFormAlert.textContent =
+          "Card number must be 16 digits (format: 1234 5678 9012 3456).";
+        paymentFormAlert.classList.remove("d-none");
+        return;
+      }
+      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expirationDateEl.value)) {
+        paymentFormAlert.textContent = "Expiration must be MM/YY.";
+        paymentFormAlert.classList.remove("d-none");
+        return;
+      }
+      if (!/^[0-9]{3,4}$/.test(cvcEl.value)) {
+        paymentFormAlert.textContent = "CVC must be 3 or 4 digits.";
+        paymentFormAlert.classList.remove("d-none");
+        return;
+      }
+      // If all valid, show success and scroll to summary
+      paymentFormAlert.classList.add("d-none");
+      paymentFormAlert.textContent = "";
+      setTimeout(() => scrollToId("summary"), 250);
+    });
+  }
   serviceRadios.forEach((r) =>
     r.addEventListener("change", () => {
       updateControls();
       if (expertApi.isConfirmed()) setTimeout(() => scrollToId("booking"), 200);
-    })
+    }),
   );
 
   dateEl.addEventListener("change", () => {
@@ -263,8 +385,12 @@ export function initBookingFlow(ctx) {
     updateControls();
   });
 
-  [timeEl, pickupEl].forEach((el) => el.addEventListener("change", updateControls));
-  [nameEl, phoneEl, emailEl, notesEl].forEach((el) => el.addEventListener("input", updateControls));
+  [timeEl, pickupEl].forEach((el) =>
+    el.addEventListener("change", updateControls),
+  );
+  [nameEl, phoneEl, emailEl, notesEl].forEach((el) =>
+    el.addEventListener("input", updateControls),
+  );
 
   confirmBtn.addEventListener("click", () => {
     clearAlert();
@@ -295,8 +421,22 @@ export function initBookingFlow(ctx) {
 
   // Init: no past dates
   dateEl.min = new Date().toISOString().slice(0, 10);
-  buildTimeOptions(timeEl, OPEN_MIN, CLOSE_MIN, STEP_MIN, true, "Select a time");
-  buildTimeOptions(pickupEl, OPEN_MIN, CLOSE_MIN, STEP_MIN, true, "Auto (earliest pickup)");
+  buildTimeOptions(
+    timeEl,
+    OPEN_MIN,
+    CLOSE_MIN,
+    STEP_MIN,
+    true,
+    "Select a time",
+  );
+  buildTimeOptions(
+    pickupEl,
+    OPEN_MIN,
+    CLOSE_MIN,
+    STEP_MIN,
+    true,
+    "Auto (earliest pickup)",
+  );
   updateControls();
 
   return { updateControls };
