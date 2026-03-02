@@ -4,7 +4,7 @@ import { initExperts } from "./experts.js";
 import { setServicesEnabled } from "./services.js";
 import { initBookingFlow } from "./booking.js";
 import { scrollToId } from "./utils.js";
-import { validatePhone } from "./validation.js";
+import { validatePhone, validateCard, validatecvc, validateExpiration} from "./validation.js";
 
 const SERVICE_MAP = {
   "svc-basic": {
@@ -190,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setConfirmed: () => {},
     };
   }
-  document.getElementById("phone").addEventListener("input", validatePhone);
+  
   // Initialize booking flow logic
   try {
     initBookingFlow({
@@ -223,4 +223,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } catch (e) {
     console.error("initBookingFlow failed:", e);
   }
+
+  document.getElementById("phone").addEventListener("input", validatePhone);
+  document.getElementById("cardNumber").addEventListener("input", validateCard);
+  document.getElementById("cvc").addEventListener("input", validatecvc);
+  document.getElementById("expirationDate").addEventListener("input", validateExpiration);
 });
