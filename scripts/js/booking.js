@@ -1,40 +1,79 @@
-// Booking flow logic
+// scripts/js/booking.js
+// MODIFIED: restores automatic scrolling (Step 2/3/Contact/Payment) while keeping per-step confirmation notices.
+
 import { loadBookings, saveBookings } from "./storage.js";
-import { scrollToId, showToast } from "./utils.js";
+import { scrollToId, setEnabledAnchor, showToast } from "./utils.js";
 import { getSelectedService } from "./services.js";
 
 export function initBookingFlow({
   SERVICE_MAP,
   TIMES,
   expertApi,
-  expertMap,
+  expertMap, // optional (for offDays)
   serviceRadios,
+
   btnNextService,
   btnNextSchedule,
+  btnNextContact,
+  btnNextPayment,
+
   dateEl,
   timeEl,
   pickupEl,
   earliestPickupEl,
   pickupHintEl,
   dateHelpEl,
+
   nameEl,
   phoneEl,
   emailEl,
   notesEl,
-  btnNextContact,
-  btnNextPayment,
-  formAlert,
+  phoneValidEl,
+  contactFormAlertEl,
+
+  cardholderNameEl,
+  cardNumberEl,
+  expirationDateEl,
+  cvcEl,
+  cardholderNameFeedbackEl,
+  cardNumberFeedbackEl,
+  expirationDateFeedbackEl,
+  cvcFeedbackEl,
+  paymentFormAlertEl,
+
+  confirmBtn,
   summaryEls,
   confirmModalEls,
   adminBody,
   renderBookings,
-  expertRadios,
 }) {
   const { OPEN_MIN, CLOSE_MIN, STEP_MIN } = TIMES;
 
-  pickupEl.required = false;
+  // pickup is optional (must never block progressing)
+  if (pickupEl) pickupEl.required = false;
+
   let lastEarliestPickup = null;
 
+  // Step-confirm modal (shared)
+  const stepModalEl = document.getElementById("stepConfirmModal");
+  const stepTitleEl = document.getElementById("stepConfirmTitle");
+  const stepBodyEl = document.getElementById("stepConfirmBody");
+  const stepModal =
+    stepModalEl && window.bootstrap?.Modal
+      ? bootstrap.Modal.getOrCreateInstance(stepModalEl)
+      : null;
+
+  const showStepConfirm = ({ title, bodyHtml }) => {
+    if (stepModal && stepTitleEl && stepBodyEl) {
+      stepTitleEl.innerHTML = `<i class="bi bi-check2-circle text-success me-2"></i>${title}`;
+      stepBodyEl.innerHTML = bodyHtml || "—";
+      stepModal.show();
+      return true;
+    }
+    return false;
+  };
+
+  // ---------- helpers ----------
   const parseTimeToMinutes = (t) => {
     if (!t || !/^\d{2}:\d{2}$/.test(t)) return null;
     const [hh, mm] = t.split(":").map(Number);
@@ -50,56 +89,104 @@ export function initBookingFlow({
   const isWithinHours = (mins) =>
     mins !== null && mins >= OPEN_MIN && mins <= CLOSE_MIN;
 
-  const isBusinessDayStr = (yyyyMmDd) => {
+  const phoneRegex =
+    /^(\+1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}$/;
+
+  const clearAlert = (el) => {
+    if (!el) return;
+    el.textContent = "";
+    el.classList.add("d-none");
+  };
+
+  const showAlert = (el, msg) => {
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove("d-none");
+  };
+
+  const isBusinessDayStr = (yyyyMmDd, expertId) => {
     if (!yyyyMmDd) return false;
     const d = new Date(yyyyMmDd + "T00:00:00");
     const day = d.getDay();
-    return day >= 1 && day <= 6; // Mon-Sat
+    const off = expertMap?.[expertId]?.offDays || [0];
+    return !off.includes(day);
   };
 
-  // Validation functions
-  const isDateValid = () =>
-    dateEl?.value && dateEl.checkValidity() && isBusinessDayStr(dateEl.value);
-
-  const isTimeValid = () => {
-    const m = parseTimeToMinutes(timeEl.value);
-    return timeEl.checkValidity() && isWithinHours(m);
-  };
-
-  const isContactValid = () =>
-    nameEl.checkValidity() &&
-    phoneEl.checkValidity() &&
-    emailEl.checkValidity() &&
-    !/\d/.test(nameEl.value);
-
-  const isPaymentValid = () => {
-    const cardholderName = document.getElementById("cardholderName");
-    const cardNumber = document.getElementById("cardNumber");
-    const expirationDate = document.getElementById("expirationDate");
-    const cvc = document.getElementById("cvc");
-
-    return (
-      cardholderName?.checkValidity() &&
-      cardNumber?.checkValidity() &&
-      expirationDate?.checkValidity() &&
-      cvc?.checkValidity()
+  const isDateValid = () => {
+    const expertId = expertApi?.getSelectedId?.();
+    return !!(
+      dateEl?.value &&
+      dateEl.checkValidity() &&
+      isBusinessDayStr(dateEl.value, expertId)
     );
   };
 
-  // UI alert helpers
-  const showAlert = (msg) => {
-    if (!formAlert) return;
-    formAlert.textContent = msg;
-    formAlert.classList.remove("d-none");
+  const isTimeValid = () => {
+    const m = parseTimeToMinutes(timeEl?.value);
+    return !!(timeEl && timeEl.checkValidity() && isWithinHours(m));
   };
 
-  const clearAlert = () => {
-    if (!formAlert) return;
-    formAlert.classList.add("d-none");
-    formAlert.textContent = "";
+  const getSvc = () => getSelectedService(serviceRadios, SERVICE_MAP);
+
+  const computeEarliestPickupMinutes = () => {
+    const svc = getSvc();
+    const startMin = parseTimeToMinutes(timeEl?.value);
+    if (!svc || startMin === null) return null;
+    const endMin = startMin + svc.durationMinutes;
+    if (endMin > CLOSE_MIN) return null;
+    return endMin;
   };
 
-  // Build time select options
+  const isPickupValidOrEmpty = (earliestPickupMin) => {
+    if (!pickupEl) return true;
+    if (!pickupEl.value) return true;
+    const p = parseTimeToMinutes(pickupEl.value);
+    return (
+      isWithinHours(p) &&
+      earliestPickupMin !== null &&
+      p >= earliestPickupMin &&
+      p <= CLOSE_MIN
+    );
+  };
+
+  const isContactValid = () => {
+    const base =
+      !!nameEl?.value &&
+      nameEl.checkValidity() &&
+      !!phoneEl?.value &&
+      phoneEl.checkValidity() &&
+      !!emailEl?.value &&
+      emailEl.checkValidity();
+
+    const phoneOK = !!phoneEl?.value && phoneRegex.test(phoneEl.value);
+    if (phoneValidEl) phoneValidEl.classList.toggle("d-none", phoneOK);
+
+    return base && phoneOK;
+  };
+
+  const isPaymentValid = () => {
+    if (!cardholderNameEl || !cardNumberEl || !expirationDateEl || !cvcEl)
+      return false;
+
+    const nameOK = cardholderNameEl.checkValidity();
+
+    const digits = (cardNumberEl.value || "").replace(/[^\d]/g, "");
+    const cardOK = /^\d{16}$/.test(digits);
+
+    const expOK = expirationDateEl.checkValidity();
+    const cvcOK = cvcEl.checkValidity();
+
+    if (cardholderNameFeedbackEl)
+      cardholderNameFeedbackEl.classList.toggle("d-none", nameOK);
+    if (cardNumberFeedbackEl)
+      cardNumberFeedbackEl.classList.toggle("d-none", cardOK);
+    if (expirationDateFeedbackEl)
+      expirationDateFeedbackEl.classList.toggle("d-none", expOK);
+    if (cvcFeedbackEl) cvcFeedbackEl.classList.toggle("d-none", cvcOK);
+
+    return nameOK && cardOK && expOK && cvcOK;
+  };
+
   const buildTimeOptions = (
     selectEl,
     startMin,
@@ -108,6 +195,7 @@ export function initBookingFlow({
     includeBlank,
     blankLabel,
   ) => {
+    if (!selectEl) return;
     selectEl.innerHTML = "";
     if (includeBlank) {
       const opt = document.createElement("option");
@@ -125,7 +213,7 @@ export function initBookingFlow({
   };
 
   const rebuildStartTimes = () => {
-    const svc = getSelectedService(serviceRadios, SERVICE_MAP);
+    const svc = getSvc();
     const maxStart = svc ? CLOSE_MIN - svc.durationMinutes : CLOSE_MIN;
     buildTimeOptions(
       timeEl,
@@ -137,17 +225,9 @@ export function initBookingFlow({
     );
   };
 
-  // Pickup time calculation
-  const computeEarliestPickupMinutes = () => {
-    const svc = getSelectedService(serviceRadios, SERVICE_MAP);
-    const startMin = parseTimeToMinutes(timeEl.value);
-    if (!svc || startMin === null) return null;
-    const endMin = startMin + svc.durationMinutes;
-    if (endMin > CLOSE_MIN) return null;
-    return endMin;
-  };
+  function updateEarliestPickupUI() {
+    if (!pickupEl || !earliestPickupEl) return;
 
-  const updateEarliestPickupUI = () => {
     const earliest = computeEarliestPickupMinutes();
 
     pickupEl.disabled = earliest === null;
@@ -161,6 +241,7 @@ export function initBookingFlow({
       opt.value = "";
       opt.textContent = "Auto (earliest pickup)";
       pickupEl.appendChild(opt);
+      if (pickupHintEl) pickupHintEl.textContent = "";
       return;
     }
 
@@ -177,26 +258,25 @@ export function initBookingFlow({
       `Auto (${minutesToTimeStr(earliest)})`,
     );
 
-    if (prev && parseTimeToMinutes(prev) >= earliest) {
-      pickupEl.value = prev;
-    } else {
-      pickupEl.value = "";
+    if (prev && parseTimeToMinutes(prev) >= earliest) pickupEl.value = prev;
+    else pickupEl.value = "";
+
+    if (pickupHintEl) {
+      pickupHintEl.textContent =
+        "Pickup must be at/after earliest pickup and within 10:00–18:00 (15-min steps).";
     }
 
-    pickupHintEl.textContent =
-      "Pickup must be at/after earliest pickup and within 10:00–18:00 (15-min steps).";
-
     lastEarliestPickup = earliest;
-  };
+  }
 
-  // Update UI elements
   const updateDateHelp = () => {
-    if (!dateHelpEl) return;
-    if (dateEl.value && !isBusinessDayStr(dateEl.value)) {
+    if (!dateHelpEl || !dateEl) return;
+    const expertId = expertApi?.getSelectedId?.();
+    if (dateEl.value && !isBusinessDayStr(dateEl.value, expertId)) {
       dateHelpEl.classList.remove("text-secondary");
       dateHelpEl.classList.add("text-danger");
       dateHelpEl.innerHTML =
-        '<i class="bi bi-exclamation-triangle me-1"></i>Sunday is not available. Choose Mon–Sat.';
+        '<i class="bi bi-exclamation-triangle me-1"></i>This mechanic is not available that day. Please choose another date.';
     } else {
       dateHelpEl.classList.remove("text-danger");
       dateHelpEl.classList.add("text-secondary");
@@ -208,12 +288,12 @@ export function initBookingFlow({
   const updateSummary = () => {
     if (!summaryEls) return;
 
-    const expertName = expertApi.getSelectedName?.() || "";
+    const expertName = expertApi?.getSelectedName?.() || "";
     summaryEls.expertLine.innerHTML = expertName
       ? `<i class="bi bi-check2 me-1"></i>${expertName}`
       : `<i class="bi bi-dash me-1"></i>Select a mechanic`;
 
-    const svc = getSelectedService(serviceRadios, SERVICE_MAP);
+    const svc = getSvc();
     summaryEls.serviceLine.innerHTML = svc
       ? `<i class="bi bi-check2 me-1"></i>${svc.name} — ${svc.price} <span class="text-secondary">(${svc.durationLabel})</span>`
       : `<i class="bi bi-dash me-1"></i>Select a service`;
@@ -227,7 +307,7 @@ export function initBookingFlow({
       : `<i class="bi bi-dash me-1"></i>Selected time will appear here`;
 
     const earliest = computeEarliestPickupMinutes();
-    if (pickupEl.value) {
+    if (pickupEl && pickupEl.value) {
       summaryEls.pickupLine.innerHTML = `<i class="bi bi-box-arrow-up-right me-1"></i>${pickupEl.value}`;
     } else if (earliest !== null) {
       summaryEls.pickupLine.innerHTML = `<i class="bi bi-box-arrow-up-right me-1"></i>(auto) ${minutesToTimeStr(earliest)}`;
@@ -236,14 +316,13 @@ export function initBookingFlow({
     }
   };
 
-  // Booking creation and conflict check
-  const overlaps = (aStart, aEnd, bStart, bEnd) =>
-    aStart < bEnd && bStart < aEnd;
+  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
   const wouldConflict = (expertName, newDate, newStartMin, newEndMin) => {
     const bookings = loadBookings();
     for (const b of bookings) {
-      if (b.date !== newDate || b.expertName !== expertName) continue;
+      if (b.date !== newDate) continue;
+      if (b.expertName !== expertName) continue;
       const bStart = parseTimeToMinutes(b.startTime);
       const bEnd = parseTimeToMinutes(b.endTime);
       if (bStart === null || bEnd === null) continue;
@@ -253,41 +332,45 @@ export function initBookingFlow({
   };
 
   const createBookingOrError = () => {
-    const expertName = expertApi.getSelectedName?.();
-    if (!expertApi.isConfirmed?.() || !expertName)
+    const expertName = expertApi?.getSelectedName?.();
+    if (!expertApi?.isConfirmed?.() || !expertName)
       return { error: "Please confirm a mechanic first." };
 
-    const svc = getSelectedService(serviceRadios, SERVICE_MAP);
+    const svc = getSvc();
     if (!svc) return { error: "Please select a service." };
 
     if (!isDateValid())
-      return { error: "Please select a valid date (Mon–Sat only)." };
+      return { error: "Please select a valid date for this mechanic (Mon–Sat only)." };
     if (!isTimeValid())
       return { error: "Please select a start time within 10:00–18:00." };
 
     const startMin = parseTimeToMinutes(timeEl.value);
     const endMin = startMin + svc.durationMinutes;
     if (endMin > CLOSE_MIN)
-      return {
-        error: "This service would end after 18:00. Choose an earlier time.",
-      };
+      return { error: "This service would end after 18:00. Choose an earlier time." };
+
+    const earliestPickupMin = endMin;
+    const earliestPickupStr = minutesToTimeStr(earliestPickupMin);
+
+    let pickupStr = pickupEl?.value || "";
+    if (!pickupStr) pickupStr = earliestPickupStr;
+
+    const pickupMin = parseTimeToMinutes(pickupStr);
+    if (pickupMin === null || pickupMin < earliestPickupMin) {
+      return { error: `Pickup must be at/after earliest pickup (${earliestPickupStr}).` };
+    }
 
     if (!isContactValid())
-      return { error: "Please complete your contact info (name/phone/email)." };
-
+      return { error: "Please complete your contact info (valid phone required)." };
     if (!isPaymentValid())
-      return { error: "Please complete your payment info." };
+      return { error: "Please complete valid payment info." };
 
     const conflict = wouldConflict(expertName, dateEl.value, startMin, endMin);
     if (conflict) {
       return {
-        error: `Time conflict: overlaps ${conflict.startTime}–${conflict.endTime}.`,
+        error: `Time conflict for ${expertName}: overlaps ${conflict.startTime}–${conflict.endTime}.`,
       };
     }
-
-    const earliestPickupMin = endMin;
-    const earliestPickupStr = minutesToTimeStr(earliestPickupMin);
-    let pickupStr = pickupEl.value || earliestPickupStr;
 
     return {
       booking: {
@@ -301,6 +384,7 @@ export function initBookingFlow({
         date: dateEl.value,
         startTime: timeEl.value,
         endTime: minutesToTimeStr(endMin),
+        earliestPickupTime: earliestPickupStr,
         pickupTime: pickupStr,
         name: nameEl.value.trim(),
         phone: phoneEl.value.trim(),
@@ -311,201 +395,179 @@ export function initBookingFlow({
     };
   };
 
-  // Main control logic
+  const isAnchorEnabled = (a) =>
+    !!a && !a.classList.contains("disabled") && a.getAttribute("aria-disabled") !== "true";
+
+  // ---------- controller ----------
   const updateControls = () => {
-    clearAlert();
+    clearAlert(contactFormAlertEl);
+    clearAlert(paymentFormAlertEl);
 
-    const expertOk = !!expertApi.isConfirmed?.();
-    const svc = getSelectedService(serviceRadios, SERVICE_MAP);
-    const hasSvc = !!svc;
-    const hasSchedule = isDateValid() && isTimeValid();
-    const contactOk = isContactValid();
-    const paymentOk = isPaymentValid();
+    const expertOk = !!expertApi?.isConfirmed?.();
+    const hasSvc = !!getSvc();
 
-    // Enable Next step buttons
-    if (btnNextService) {
-      btnNextService.classList.toggle("disabled", !(expertOk && hasSvc));
-      btnNextService.setAttribute(
-        "aria-disabled",
-        expertOk && hasSvc ? "false" : "true",
-      );
-    }
-
-    if (btnNextSchedule) {
-      btnNextSchedule.classList.toggle("disabled", !hasSchedule);
-      btnNextSchedule.setAttribute(
-        "aria-disabled",
-        hasSchedule ? "false" : "true",
-      );
-    }
-
-    if (btnNextContact) {
-      const ready = expertOk && hasSvc && hasSchedule && contactOk;
-      btnNextContact.classList.toggle("disabled", !ready);
-      btnNextContact.setAttribute("aria-disabled", ready ? "false" : "true");
-    }
-
-    if (btnNextPayment) {
-      const ready = expertOk && hasSvc && hasSchedule && contactOk && paymentOk;
-      btnNextPayment.classList.toggle("disabled", !ready);
-      btnNextPayment.setAttribute("aria-disabled", ready ? "false" : "true");
-    }
-
-    // Enable confirm button only when all info complete
-    const confirmBtn = document.getElementById("confirmBtn");
-    if (confirmBtn) {
-      const allComplete =
-        expertOk && hasSvc && hasSchedule && contactOk && paymentOk;
-      confirmBtn.disabled = !allComplete;
-    }
+    setEnabledAnchor(btnNextService, expertOk && hasSvc);
 
     updateDateHelp();
     updateEarliestPickupUI();
+
+    const hasSchedule = expertOk && hasSvc && isDateValid() && isTimeValid();
+    setEnabledAnchor(btnNextSchedule, hasSchedule);
+
+    const contactOk = hasSchedule && isContactValid();
+    setEnabledAnchor(btnNextContact, contactOk);
+
+    const paymentOk = contactOk && isPaymentValid();
+    setEnabledAnchor(btnNextPayment, paymentOk);
+
+    const earliest = computeEarliestPickupMinutes();
+    const pickupOk = isPickupValidOrEmpty(earliest);
+    if (confirmBtn) confirmBtn.disabled = !(paymentOk && pickupOk);
+
     updateSummary();
   };
 
-  // Event listeners
-  // Service selection change
-  serviceRadios.forEach((r) =>
+  // ---------- EVENTS ----------
+  // Service selection should NOT auto-scroll; only update state
+  serviceRadios.forEach((r) => {
     r.addEventListener("change", () => {
       rebuildStartTimes();
-      timeEl.value = "";
-      pickupEl.value = "";
-      lastEarliestPickup = null;
+      if (timeEl?.value && !Array.from(timeEl.options).some((o) => o.value === timeEl.value)) {
+        timeEl.value = "";
+      }
       updateControls();
-      showToast?.("Service selected. Next: pick a date & time.");
-      if (expertApi.isConfirmed?.())
-        setTimeout(() => scrollToId("booking"), 200);
-    }),
-  );
-
-  // Date change handler
-  dateEl.addEventListener("change", () => {
-    if (dateEl.value && !isBusinessDayStr(dateEl.value)) {
-      dateEl.value = "";
-      showToast?.("Sunday not available. Choose Mon–Sat.");
-    }
-    updateControls();
+    });
   });
 
-  // Time change handler
-  timeEl.addEventListener("change", () => {
-    lastEarliestPickup = null;
-    updateControls();
-  });
+  if (dateEl) {
+    dateEl.addEventListener("change", () => {
+      const expertId = expertApi?.getSelectedId?.();
+      if (dateEl.value && !isBusinessDayStr(dateEl.value, expertId)) dateEl.value = "";
+      updateControls();
+    });
+  }
 
-  // Pickup and contact change
-  pickupEl.addEventListener("change", updateControls);
-  [nameEl, phoneEl, emailEl, notesEl].forEach((el) =>
-    el.addEventListener("input", updateControls),
-  );
+  if (timeEl) timeEl.addEventListener("change", updateControls);
+  if (pickupEl) pickupEl.addEventListener("change", updateControls);
 
-  // Payment field change
-  ["cardholderName", "cardNumber", "expirationDate", "cvc"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("input", updateControls);
-  });
+  [nameEl, phoneEl, emailEl, notesEl].forEach((el) => el && el.addEventListener("input", updateControls));
+  [cardholderNameEl, cardNumberEl, expirationDateEl, cvcEl].forEach((el) => el && el.addEventListener("input", updateControls));
 
-  // Next button click handlers
+  // MODIFIED: Re-implement auto-scroll on Next clicks (with confirmation notice)
+  if (btnNextService) {
+    btnNextService.addEventListener("click", (e) => {
+      if (!isAnchorEnabled(btnNextService)) return e.preventDefault();
+      e.preventDefault();
+
+      const svc = getSvc();
+      const expertName = expertApi?.getSelectedName?.() || "—";
+
+      const shown = showStepConfirm({
+        title: "Service confirmed",
+        bodyHtml: `<p class="mb-0">You selected: <span class="fw-semibold">${svc?.name || "—"}</span>. Next: pick date & time.</p>`,
+      });
+
+      if (!shown) showToast(`Service confirmed: ${svc?.name || "—"}.`);
+      scrollToId("booking"); // MODIFIED: auto scroll restored
+    });
+  }
+
+  if (btnNextSchedule) {
+    btnNextSchedule.addEventListener("click", (e) => {
+      if (!isAnchorEnabled(btnNextSchedule)) return e.preventDefault();
+      e.preventDefault();
+
+      const earliest = computeEarliestPickupMinutes();
+      const pickupStr = pickupEl?.value || (earliest !== null ? minutesToTimeStr(earliest) : "—");
+
+      const shown = showStepConfirm({
+        title: "Schedule confirmed",
+        bodyHtml: `
+          <ul class="mb-0">
+            <li><span class="fw-semibold">Date:</span> ${dateEl?.value || "—"}</li>
+            <li><span class="fw-semibold">Start:</span> ${timeEl?.value || "—"}</li>
+            <li><span class="fw-semibold">Pickup:</span> ${pickupStr}</li>
+          </ul>
+        `,
+      });
+
+      if (!shown) showToast("Schedule confirmed.");
+      scrollToId("contact"); // MODIFIED: auto scroll restored
+    });
+  }
+
   if (btnNextContact) {
     btnNextContact.addEventListener("click", (e) => {
-      if (btnNextContact.classList.contains("disabled")) {
-        e.preventDefault();
-      }
+      if (!isAnchorEnabled(btnNextContact)) return e.preventDefault();
+      e.preventDefault();
+
+      const shown = showStepConfirm({
+        title: "Contact confirmed",
+        bodyHtml: `<p class="mb-0">Contact info recorded for <span class="fw-semibold">${nameEl?.value?.trim() || "—"}</span>. Next: payment info.</p>`,
+      });
+
+      if (!shown) showToast("Contact confirmed.");
+      scrollToId("payment"); // MODIFIED: auto scroll restored
     });
   }
 
   if (btnNextPayment) {
     btnNextPayment.addEventListener("click", (e) => {
-      if (btnNextPayment.classList.contains("disabled")) {
-        e.preventDefault();
-      }
-    });
-  }
-
-  // Confirm button click handler
-  const confirmBtn = document.getElementById("confirmBtn");
-  if (confirmBtn) {
-    confirmBtn.addEventListener("click", (e) => {
+      if (!isAnchorEnabled(btnNextPayment)) return e.preventDefault();
       e.preventDefault();
 
-      if (confirmBtn.disabled) {
-        showAlert("Please complete all required information.");
-        return;
-      }
+      const digits = (cardNumberEl?.value || "").replace(/[^\d]/g, "");
+      const last4 = digits.length >= 4 ? digits.slice(-4) : "—";
 
-      clearAlert();
+      const shown = showStepConfirm({
+        title: "Payment validated",
+        bodyHtml: `<p class="mb-0">Card ending <span class="fw-semibold">${last4}</span> looks valid. Review summary next.</p>`,
+      });
 
-      // Validate and create booking
-      const res = createBookingOrError();
-      if (res.error) {
-        showAlert(res.error);
-        return;
-      }
-
-      try {
-        // Save booking
-        const bookings = loadBookings();
-        bookings.unshift(res.booking);
-        saveBookings(bookings);
-
-        // Update admin table
-        if (adminBody && renderBookings) {
-          renderBookings(adminBody);
-        }
-
-        showToast?.(`Booking confirmed for ${res.booking.expertName}!`);
-
-        // Show confirmation modal
-        if (confirmModalEls.confirmModalEl && window.bootstrap?.Modal) {
-          if (confirmModalEls.modalExpert)
-            confirmModalEls.modalExpert.textContent = res.booking.expertName;
-          if (confirmModalEls.modalService)
-            confirmModalEls.modalService.textContent = `${res.booking.serviceName} (${res.booking.servicePrice})`;
-          if (confirmModalEls.modalDate)
-            confirmModalEls.modalDate.textContent = res.booking.date;
-          if (confirmModalEls.modalTime)
-            confirmModalEls.modalTime.textContent = res.booking.startTime;
-          if (confirmModalEls.modalPickup)
-            confirmModalEls.modalPickup.textContent = res.booking.pickupTime;
-          if (confirmModalEls.modalName)
-            confirmModalEls.modalName.textContent = res.booking.name;
-
-          const modal = new bootstrap.Modal(confirmModalEls.confirmModalEl);
-          modal.show();
-        }
-
-        // Reset form after 2 seconds
-        setTimeout(() => {
-          dateEl.value = "";
-          timeEl.value = "";
-          pickupEl.value = "";
-          nameEl.value = "";
-          phoneEl.value = "";
-          emailEl.value = "";
-          notesEl.value = "";
-
-          document.getElementById("cardholderName").value = "";
-          document.getElementById("cardNumber").value = "";
-          document.getElementById("expirationDate").value = "";
-          document.getElementById("cvc").value = "";
-
-          expertRadios.forEach((r) => (r.checked = false));
-          serviceRadios.forEach((r) => (r.checked = false));
-
-          updateControls();
-          scrollToId("top");
-          showToast?.("Ready for your next booking!");
-        }, 2000);
-      } catch (error) {
-        console.error("Booking error:", error);
-        showAlert("Error saving booking. Please try again.");
-      }
+      if (!shown) showToast("Payment validated.");
+      scrollToId("summary"); // MODIFIED: auto scroll restored
     });
   }
 
-  // Initialize booking form
-  dateEl.min = new Date().toISOString().slice(0, 10);
+  // Final confirm booking
+  if (confirmBtn) {
+    confirmBtn.addEventListener("click", () => {
+      clearAlert(contactFormAlertEl);
+      clearAlert(paymentFormAlertEl);
+      updateControls();
+
+      const res = createBookingOrError();
+      if (res.error) {
+        if (!isContactValid()) showAlert(contactFormAlertEl, res.error);
+        else if (!isPaymentValid()) showAlert(paymentFormAlertEl, res.error);
+        showToast(res.error);
+        return;
+      }
+
+      const bookings = loadBookings();
+      bookings.unshift(res.booking);
+      saveBookings(bookings);
+
+      if (typeof renderBookings === "function" && adminBody) renderBookings(adminBody);
+
+      if (confirmModalEls?.modalExpert) confirmModalEls.modalExpert.textContent = res.booking.expertName;
+      if (confirmModalEls?.modalService) confirmModalEls.modalService.textContent = `${res.booking.serviceName} (${res.booking.servicePrice})`;
+      if (confirmModalEls?.modalDate) confirmModalEls.modalDate.textContent = res.booking.date;
+      if (confirmModalEls?.modalTime) confirmModalEls.modalTime.textContent = res.booking.startTime;
+      if (confirmModalEls?.modalPickup) confirmModalEls.modalPickup.textContent = res.booking.pickupTime;
+      if (confirmModalEls?.modalName) confirmModalEls.modalName.textContent = res.booking.name;
+
+      if (confirmModalEls?.confirmModalEl) new bootstrap.Modal(confirmModalEls.confirmModalEl).show();
+      showToast("Booking saved.");
+    });
+  }
+
+  // ---------- INIT ----------
+  if (dateEl) {
+    const today = new Date();
+    dateEl.min = today.toISOString().slice(0, 10);
+  }
+
   rebuildStartTimes();
   updateEarliestPickupUI();
   updateControls();
