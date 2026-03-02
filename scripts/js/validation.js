@@ -28,7 +28,6 @@ export function validateCard() {
   } else {
     cardValid.classList.remove("d-none");
   }
-
 }
 
 export function validatecvc() {
@@ -53,5 +52,5 @@ export function validateExpiration() {
     expValid.classList.add("d-none");
   } else {
     expValid.classList.remove("d-none");
-  } 
+  }
 }

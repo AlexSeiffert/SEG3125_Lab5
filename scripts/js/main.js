@@ -6,17 +6,49 @@ import { initBookingFlow } from "./booking.js";
 import { scrollToId, showToast } from "./utils.js";
 
 const SERVICE_MAP = {
-  "svc-basic":  { name: "Basic Tune-Up", price: "$79",  durationLabel: "~60 min",  durationMinutes: 60  },
-  "svc-full":   { name: "Full Tune-Up",  price: "$149", durationLabel: "~120 min", durationMinutes: 120 },
-  "svc-flat":   { name: "Flat Repair",   price: "$25+", durationLabel: "~30 min",  durationMinutes: 30  },
-  "svc-brakes": { name: "Brake Service", price: "$35+", durationLabel: "~30–45 min", durationMinutes: 45 }
+  "svc-basic": {
+    name: "Basic Tune-Up",
+    price: "$79",
+    durationLabel: "~60 min",
+    durationMinutes: 60,
+  },
+  "svc-full": {
+    name: "Full Tune-Up",
+    price: "$149",
+    durationLabel: "~120 min",
+    durationMinutes: 120,
+  },
+  "svc-flat": {
+    name: "Flat Repair",
+    price: "$25+",
+    durationLabel: "~30 min",
+    durationMinutes: 30,
+  },
+  "svc-brakes": {
+    name: "Brake Service",
+    price: "$35+",
+    durationLabel: "~30–45 min",
+    durationMinutes: 45,
+  },
 };
 
 const EXPERT_MAP = {
-  "exp-alex":   { name: "Alex Nguyen", offDays: [0] },
-  "exp-maya":   { name: "Maya Patel", offDays: [0] },
-  "exp-jordan": { name: "Jordan Lee", offDays: [0] },
-  "exp-sofia":  { name: "Sofia Romero", offDays: [0] }
+  "exp-alex": {
+    name: "Alex Nguyen",
+    offDays: [0, 2], // Sunday, Tuesday
+  },
+  "exp-maya": {
+    name: "Maya Patel",
+    offDays: [0, 1], // Sunday, Monday
+  },
+  "exp-jordan": {
+    name: "Jordan Lee",
+    offDays: [0, 4], // Sunday, Thursday
+  },
+  "exp-sofia": {
+    name: "Sofia Romero",
+    offDays: [0, 6], // Sunday, Saturday
+  },
 };
 
 const TIMES = { OPEN_MIN: 10 * 60, CLOSE_MIN: 18 * 60, STEP_MIN: 15 };
@@ -26,7 +58,9 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", () => {
   // tooltips
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
-    try { new bootstrap.Tooltip(el); } catch {}
+    try {
+      new bootstrap.Tooltip(el);
+    } catch {}
   });
 
   // Admin
@@ -37,11 +71,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // Services lock
   const servicesGrid = $("servicesGrid");
   const servicesLockedMsg = $("servicesLockedMsg");
-  const serviceRadios = Array.from(document.querySelectorAll('input[name="service"]'));
-  setServicesEnabled({ enabled: false, servicesGrid, lockedMsg: servicesLockedMsg, serviceRadios });
+  const serviceRadios = Array.from(
+    document.querySelectorAll('input[name="service"]'),
+  );
+  setServicesEnabled({
+    enabled: false,
+    servicesGrid,
+    lockedMsg: servicesLockedMsg,
+    serviceRadios,
+  });
 
   // Experts
-  const expertRadios = Array.from(document.querySelectorAll('input[name="expert"]'));
+  const expertRadios = Array.from(
+    document.querySelectorAll('input[name="expert"]'),
+  );
   const confirmExpertBtn = $("confirmExpertBtn");
 
   const expertApi = initExperts({
@@ -51,10 +94,15 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmModalEl: $("expertConfirmModal"),
     modalNameEl: $("expertModalName"),
     onConfirmed: () => {
-      setServicesEnabled({ enabled: true, servicesGrid, lockedMsg: servicesLockedMsg, serviceRadios });
+      setServicesEnabled({
+        enabled: true,
+        servicesGrid,
+        lockedMsg: servicesLockedMsg,
+        serviceRadios,
+      });
       showToast("Mechanic confirmed. Services unlocked.");
       setTimeout(() => scrollToId("services"), 250);
-    }
+    },
   });
 
   // Booking flow

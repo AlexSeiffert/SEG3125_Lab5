@@ -1,6 +1,4 @@
 // scripts/js/booking.js
-// MODIFIED: restores automatic scrolling (Step 2/3/Contact/Payment) while keeping per-step confirmation notices.
-
 import { loadBookings, saveBookings } from "./storage.js";
 import { scrollToId, setEnabledAnchor, showToast } from "./utils.js";
 import { getSelectedService } from "./services.js";
@@ -73,7 +71,89 @@ export function initBookingFlow({
     return false;
   };
 
-  // ---------- helpers ----------
+  // helpers
+  // Helper: get disabled days for selected expert
+  function getDisabledDays(expertId) {
+    const weekends = [0]; // Sunday
+    const expertOff = expertMap?.[expertId]?.offDays || [];
+    return Array.from(new Set([...weekends, ...expertOff]));
+  }
+
+  // Flatpickr integration
+  // Adapted from flatpickr docs and customized to disable days based on expert selection
+  let fpInstance = null;
+
+  function setupFlatpickr() {
+    if (!dateEl) return;
+
+    if (fpInstance) {
+      fpInstance.destroy();
+      fpInstance = null;
+    }
+
+    const expertId = expertApi?.getSelectedId?.();
+    const disabledDays = getDisabledDays(expertId);
+
+    fpInstance = flatpickr(dateEl, {
+      dateFormat: "Y-m-d",
+      minDate: "today",
+
+      disable: [
+        function (date) {
+          return disabledDays.includes(date.getDay());
+        },
+      ],
+
+      onDayCreate: function (dObj, dStr, fp, dayElem) {
+        const day = dayElem.dateObj.getDay();
+
+        if (disabledDays.includes(day)) {
+          dayElem.classList.add("flatpickr-disabled");
+        }
+      },
+
+      onChange: function () {
+        updateDateHelp();
+        updateControls();
+      },
+    });
+  }
+  // Helper: get disabled days for selected expert
+  function getDisabledDays(expertId) {
+    // 0: Sunday, 1: Monday, ..., 6: Saturday
+    // Only Sunday (0) is always disabled
+    const weekends = [0];
+    const expertOff = expertMap?.[expertId]?.offDays || [];
+    // Merge Sunday and expert off-days, remove duplicates
+    return Array.from(new Set([...weekends, ...expertOff]));
+  }
+
+  // Helper: update calendar UI to disable days
+  function updateCalendarDisabledDays() {
+    if (!dateEl) return;
+    const expertId = expertApi?.getSelectedId?.();
+    const disabledDays = getDisabledDays(expertId);
+
+    // If using <input type="date">, can't disable days natively, so use feedback and styling
+    // Add a class to the input if the selected day is disabled
+    if (dateEl.value) {
+      const d = new Date(dateEl.value + "T00:00:00");
+      if (disabledDays.includes(d.getDay())) {
+        dateEl.classList.add("disabled-day");
+        dateEl.title = "This day is unavailable for booking.";
+      } else {
+        dateEl.classList.remove("disabled-day");
+        dateEl.title = "";
+      }
+    }
+  }
+
+  // Add CSS for disabled-day
+  if (typeof window !== "undefined") {
+    const style = document.createElement("style");
+    style.innerHTML = `.disabled-day { background: #eee !important; color: #888 !important; border-color: #ccc !important; }`;
+    document.head.appendChild(style);
+  }
   const parseTimeToMinutes = (t) => {
     if (!t || !/^\d{2}:\d{2}$/.test(t)) return null;
     const [hh, mm] = t.split(":").map(Number);
@@ -89,8 +169,7 @@ export function initBookingFlow({
   const isWithinHours = (mins) =>
     mins !== null && mins >= OPEN_MIN && mins <= CLOSE_MIN;
 
-  const phoneRegex =
-    /^(\+1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}$/;
+  const phoneRegex = /^(\+1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}$/;
 
   const clearAlert = (el) => {
     if (!el) return;
@@ -108,8 +187,9 @@ export function initBookingFlow({
     if (!yyyyMmDd) return false;
     const d = new Date(yyyyMmDd + "T00:00:00");
     const day = d.getDay();
-    const off = expertMap?.[expertId]?.offDays || [0];
-    return !off.includes(day);
+    // Weekends always disabled, plus expert off-days
+    const disabledDays = getDisabledDays(expertId);
+    return !disabledDays.includes(day);
   };
 
   const isDateValid = () => {
@@ -272,16 +352,28 @@ export function initBookingFlow({
   const updateDateHelp = () => {
     if (!dateHelpEl || !dateEl) return;
     const expertId = expertApi?.getSelectedId?.();
-    if (dateEl.value && !isBusinessDayStr(dateEl.value, expertId)) {
-      dateHelpEl.classList.remove("text-secondary");
-      dateHelpEl.classList.add("text-danger");
-      dateHelpEl.innerHTML =
-        '<i class="bi bi-exclamation-triangle me-1"></i>This mechanic is not available that day. Please choose another date.';
+    const weekends = [0, 6];
+    const disabledDays = getDisabledDays(expertId);
+    if (dateEl.value) {
+      const d = new Date(dateEl.value + "T00:00:00");
+      if (disabledDays.includes(d.getDay())) {
+        dateHelpEl.classList.remove("text-secondary");
+        dateHelpEl.classList.add("text-danger");
+        let dayName = d.toLocaleDateString(undefined, { weekday: "long" });
+        let expertName = expertApi?.getSelectedName?.() || "this expert";
+        let offMsg = weekends.includes(d.getDay())
+          ? `${dayName} is a weekend and unavailable for booking.`
+          : `${expertName} is not available on ${dayName}.`;
+        dateHelpEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${offMsg} Please choose another date.`;
+      } else {
+        dateHelpEl.classList.remove("text-danger");
+        dateHelpEl.classList.add("text-secondary");
+        dateHelpEl.innerHTML = `<i class="bi bi-info-circle me-1"></i>Choose an available day. Weekends and expert off-days are disabled.`;
+      }
     } else {
       dateHelpEl.classList.remove("text-danger");
       dateHelpEl.classList.add("text-secondary");
-      dateHelpEl.innerHTML =
-        '<i class="bi bi-info-circle me-1"></i>Choose a future date. Sunday is not available.';
+      dateHelpEl.innerHTML = `<i class="bi bi-info-circle me-1"></i>Select a date to see availability.`;
     }
   };
 
@@ -316,7 +408,8 @@ export function initBookingFlow({
     }
   };
 
-  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+  const overlaps = (aStart, aEnd, bStart, bEnd) =>
+    aStart < bEnd && bStart < aEnd;
 
   const wouldConflict = (expertName, newDate, newStartMin, newEndMin) => {
     const bookings = loadBookings();
@@ -340,14 +433,18 @@ export function initBookingFlow({
     if (!svc) return { error: "Please select a service." };
 
     if (!isDateValid())
-      return { error: "Please select a valid date for this mechanic (Mon–Sat only)." };
+      return {
+        error: "Please select a valid date for this mechanic (Mon–Sat only).",
+      };
     if (!isTimeValid())
       return { error: "Please select a start time within 10:00–18:00." };
 
     const startMin = parseTimeToMinutes(timeEl.value);
     const endMin = startMin + svc.durationMinutes;
     if (endMin > CLOSE_MIN)
-      return { error: "This service would end after 18:00. Choose an earlier time." };
+      return {
+        error: "This service would end after 18:00. Choose an earlier time.",
+      };
 
     const earliestPickupMin = endMin;
     const earliestPickupStr = minutesToTimeStr(earliestPickupMin);
@@ -357,11 +454,15 @@ export function initBookingFlow({
 
     const pickupMin = parseTimeToMinutes(pickupStr);
     if (pickupMin === null || pickupMin < earliestPickupMin) {
-      return { error: `Pickup must be at/after earliest pickup (${earliestPickupStr}).` };
+      return {
+        error: `Pickup must be at/after earliest pickup (${earliestPickupStr}).`,
+      };
     }
 
     if (!isContactValid())
-      return { error: "Please complete your contact info (valid phone required)." };
+      return {
+        error: "Please complete your contact info (valid phone required).",
+      };
     if (!isPaymentValid())
       return { error: "Please complete valid payment info." };
 
@@ -396,9 +497,11 @@ export function initBookingFlow({
   };
 
   const isAnchorEnabled = (a) =>
-    !!a && !a.classList.contains("disabled") && a.getAttribute("aria-disabled") !== "true";
+    !!a &&
+    !a.classList.contains("disabled") &&
+    a.getAttribute("aria-disabled") !== "true";
 
-  // ---------- controller ----------
+  // controller
   const updateControls = () => {
     clearAlert(contactFormAlertEl);
     clearAlert(paymentFormAlertEl);
@@ -425,35 +528,80 @@ export function initBookingFlow({
     if (confirmBtn) confirmBtn.disabled = !(paymentOk && pickupOk);
 
     updateSummary();
+
+    // Disable date/time/pickup until mechanic and service are selected
+    if (dateEl) dateEl.disabled = !(expertOk && hasSvc);
+    if (timeEl) timeEl.disabled = !(expertOk && hasSvc);
+    if (pickupEl) pickupEl.disabled = !(expertOk && hasSvc);
+
+    // Disable contact info until schedule is valid
+    if (nameEl) nameEl.disabled = !hasSchedule;
+    if (phoneEl) phoneEl.disabled = !hasSchedule;
+    if (emailEl) emailEl.disabled = !hasSchedule;
+    if (notesEl) notesEl.disabled = !hasSchedule;
+
+    // Disable payment info until contact info is valid
+    if (cardholderNameEl) cardholderNameEl.disabled = !contactOk;
+    if (cardNumberEl) cardNumberEl.disabled = !contactOk;
+    if (expirationDateEl) expirationDateEl.disabled = !contactOk;
+    if (cvcEl) cvcEl.disabled = !contactOk;
   };
 
-  // ---------- EVENTS ----------
+  //  EVENTS
+  // Listen for expert change to update flatpickr
+  if (expertApi?.onChange) {
+    expertApi.onChange(() => {
+      if (dateEl) dateEl.value = ""; // Clears old date
+      setupFlatpickr();
+      updateDateHelp();
+      updateControls();
+    });
+  }
+  // Initial setup
+  setupFlatpickr();
+  // Listen for expert change and date change to update calendar UI
+  if (expertApi?.onChange) {
+    expertApi.onChange(() => {
+      updateCalendarDisabledDays();
+      updateDateHelp();
+      updateControls();
+    });
+  }
+  if (dateEl) {
+    dateEl.addEventListener("input", () => {
+      updateCalendarDisabledDays();
+      updateDateHelp();
+      updateControls();
+    });
+    // Initial update
+    updateCalendarDisabledDays();
+    updateDateHelp();
+    updateControls();
+  }
   // Service selection should NOT auto-scroll; only update state
   serviceRadios.forEach((r) => {
     r.addEventListener("change", () => {
       rebuildStartTimes();
-      if (timeEl?.value && !Array.from(timeEl.options).some((o) => o.value === timeEl.value)) {
+      if (
+        timeEl?.value &&
+        !Array.from(timeEl.options).some((o) => o.value === timeEl.value)
+      ) {
         timeEl.value = "";
       }
       updateControls();
     });
   });
 
-  if (dateEl) {
-    dateEl.addEventListener("change", () => {
-      const expertId = expertApi?.getSelectedId?.();
-      if (dateEl.value && !isBusinessDayStr(dateEl.value, expertId)) dateEl.value = "";
-      updateControls();
-    });
-  }
-
   if (timeEl) timeEl.addEventListener("change", updateControls);
   if (pickupEl) pickupEl.addEventListener("change", updateControls);
 
-  [nameEl, phoneEl, emailEl, notesEl].forEach((el) => el && el.addEventListener("input", updateControls));
-  [cardholderNameEl, cardNumberEl, expirationDateEl, cvcEl].forEach((el) => el && el.addEventListener("input", updateControls));
+  [nameEl, phoneEl, emailEl, notesEl].forEach(
+    (el) => el && el.addEventListener("input", updateControls),
+  );
+  [cardholderNameEl, cardNumberEl, expirationDateEl, cvcEl].forEach(
+    (el) => el && el.addEventListener("input", updateControls),
+  );
 
-  // MODIFIED: Re-implement auto-scroll on Next clicks (with confirmation notice)
   if (btnNextService) {
     btnNextService.addEventListener("click", (e) => {
       if (!isAnchorEnabled(btnNextService)) return e.preventDefault();
@@ -468,7 +616,7 @@ export function initBookingFlow({
       });
 
       if (!shown) showToast(`Service confirmed: ${svc?.name || "—"}.`);
-      scrollToId("booking"); // MODIFIED: auto scroll restored
+      scrollToId("booking");
     });
   }
 
@@ -478,7 +626,9 @@ export function initBookingFlow({
       e.preventDefault();
 
       const earliest = computeEarliestPickupMinutes();
-      const pickupStr = pickupEl?.value || (earliest !== null ? minutesToTimeStr(earliest) : "—");
+      const pickupStr =
+        pickupEl?.value ||
+        (earliest !== null ? minutesToTimeStr(earliest) : "—");
 
       const shown = showStepConfirm({
         title: "Schedule confirmed",
@@ -492,7 +642,7 @@ export function initBookingFlow({
       });
 
       if (!shown) showToast("Schedule confirmed.");
-      scrollToId("contact"); // MODIFIED: auto scroll restored
+      scrollToId("contact");
     });
   }
 
@@ -507,7 +657,7 @@ export function initBookingFlow({
       });
 
       if (!shown) showToast("Contact confirmed.");
-      scrollToId("payment"); // MODIFIED: auto scroll restored
+      scrollToId("payment");
     });
   }
 
@@ -525,7 +675,7 @@ export function initBookingFlow({
       });
 
       if (!shown) showToast("Payment validated.");
-      scrollToId("summary"); // MODIFIED: auto scroll restored
+      scrollToId("summary");
     });
   }
 
@@ -548,21 +698,29 @@ export function initBookingFlow({
       bookings.unshift(res.booking);
       saveBookings(bookings);
 
-      if (typeof renderBookings === "function" && adminBody) renderBookings(adminBody);
+      if (typeof renderBookings === "function" && adminBody)
+        renderBookings(adminBody);
 
-      if (confirmModalEls?.modalExpert) confirmModalEls.modalExpert.textContent = res.booking.expertName;
-      if (confirmModalEls?.modalService) confirmModalEls.modalService.textContent = `${res.booking.serviceName} (${res.booking.servicePrice})`;
-      if (confirmModalEls?.modalDate) confirmModalEls.modalDate.textContent = res.booking.date;
-      if (confirmModalEls?.modalTime) confirmModalEls.modalTime.textContent = res.booking.startTime;
-      if (confirmModalEls?.modalPickup) confirmModalEls.modalPickup.textContent = res.booking.pickupTime;
-      if (confirmModalEls?.modalName) confirmModalEls.modalName.textContent = res.booking.name;
+      if (confirmModalEls?.modalExpert)
+        confirmModalEls.modalExpert.textContent = res.booking.expertName;
+      if (confirmModalEls?.modalService)
+        confirmModalEls.modalService.textContent = `${res.booking.serviceName} (${res.booking.servicePrice})`;
+      if (confirmModalEls?.modalDate)
+        confirmModalEls.modalDate.textContent = res.booking.date;
+      if (confirmModalEls?.modalTime)
+        confirmModalEls.modalTime.textContent = res.booking.startTime;
+      if (confirmModalEls?.modalPickup)
+        confirmModalEls.modalPickup.textContent = res.booking.pickupTime;
+      if (confirmModalEls?.modalName)
+        confirmModalEls.modalName.textContent = res.booking.name;
 
-      if (confirmModalEls?.confirmModalEl) new bootstrap.Modal(confirmModalEls.confirmModalEl).show();
+      if (confirmModalEls?.confirmModalEl)
+        new bootstrap.Modal(confirmModalEls.confirmModalEl).show();
       showToast("Booking saved.");
     });
   }
 
-  // ---------- INIT ----------
+  // INIT
   if (dateEl) {
     const today = new Date();
     dateEl.min = today.toISOString().slice(0, 10);

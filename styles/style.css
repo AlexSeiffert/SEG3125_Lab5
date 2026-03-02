@@ -16,6 +16,22 @@ body {
 .form-select {
   border-radius: var(--acs-radius);
 }
+/* Button hover feedback */
+button,
+.btn {
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+button:hover,
+.btn:hover {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 0 8px 0 #2563eb33;
+}
 .shadow-soft {
   box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
 }
@@ -80,6 +96,37 @@ header,
 .acs-input:hover {
   border-color: rgba(37, 99, 235, 0.35);
 }
+/* Disabled input visual indicator */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f0f0f0 !important;
+  color: #a0a0a0 !important;
+  border-color: #d1d5db !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+/* hover feedback */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+textarea {
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
+}
+
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+input[type="date"]:hover,
+textarea:hover {
+  border-color: #0078d7;
+  box-shadow: 0 0 4px 0 #0078d733;
+}
 
 /* Service cards */
 .service-card {
@@ -105,9 +152,17 @@ header,
 }
 .selected-badge {
   display: none;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  vertical-align: middle;
+  font-weight: 500;
+  font-size: 1rem;
 }
 .btn-check:checked + .service-option .selected-badge {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Disable services until expert confirmed */
@@ -120,6 +175,12 @@ header,
 .expert-option {
   border: 2px solid rgba(0, 0, 0, 0.06);
   transition: 0.15s ease;
+  cursor: pointer;
+}
+.expert-option:hover {
+  border-color: #2563eb;
+  box-shadow: 0 0 8px 0 #2563eb33;
+  transform: translateY(-2px) scale(1.02);
 }
 .btn-check:checked + .expert-option {
   border-color: var(--acs-primary);

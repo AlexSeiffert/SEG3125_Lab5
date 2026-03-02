@@ -61,7 +61,7 @@ export function showToast(message) {
   t.show();
 }
 
-// Sidebar follow logic 
+// Sidebar follow logic
 export function sidebarFollow() {
   const LG_MIN = 992;
   const margin = 16;

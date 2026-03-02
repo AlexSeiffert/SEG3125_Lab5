@@ -18,6 +18,12 @@
     />
 
     <link rel="stylesheet" href="styles/style.css" />
+    <!-- Flatpickr CDN (custom date selector library)-->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   </head>
 
   <body>
@@ -694,8 +700,9 @@
                       <input
                         class="form-control acs-input"
                         id="date"
-                        type="date"
+                        type="text"
                         required
+                        placeholder="Select a date"
                       />
                     </div>
 
@@ -710,7 +717,11 @@
                           <i class="bi bi-question-circle"></i>
                         </span>
                       </label>
-                      <select class="form-select acs-input" id="time" required></select>
+                      <select
+                        class="form-select acs-input"
+                        id="time"
+                        required
+                      ></select>
                     </div>
 
                     <div class="col-12">
@@ -725,13 +736,19 @@
                           <i class="bi bi-question-circle"></i>
                         </span>
                       </label>
-                      <select class="form-select acs-input" id="pickup"></select>
+                      <select
+                        class="form-select acs-input"
+                        id="pickup"
+                      ></select>
                       <div class="form-text">
                         Earliest pickup time (start + service duration):
                         <span id="earliestPickup">—</span>. Leave blank to
                         auto-set.
                       </div>
-                      <div id="pickupHint" class="small text-secondary mt-1"></div>
+                      <div
+                        id="pickupHint"
+                        class="small text-secondary mt-1"
+                      ></div>
                     </div>
                   </div>
 
@@ -802,6 +819,13 @@
                     <div class="col-12">
                       <label class="form-label fw-semibold" for="email">
                         <i class="bi bi-envelope me-1"></i>Email
+                        <span
+                          class="ms-1 text-secondary"
+                          data-bs-toggle="tooltip"
+                          title="Enter a valid email address for booking confirmation."
+                        >
+                          <i class="bi bi-question-circle"></i>
+                        </span>
                       </label>
                       <input
                         class="form-control acs-input"
@@ -852,7 +876,10 @@
 
                   <div class="row g-3">
                     <div class="col-12">
-                      <label class="form-label fw-semibold" for="cardholderName">
+                      <label
+                        class="form-label fw-semibold"
+                        for="cardholderName"
+                      >
                         <i class="bi bi-person me-1"></i>Cardholder name
                         <span
                           class="ms-1 text-secondary"
@@ -908,7 +935,10 @@
                     </div>
 
                     <div class="col-12 col-md-6">
-                      <label class="form-label fw-semibold" for="expirationDate">
+                      <label
+                        class="form-label fw-semibold"
+                        for="expirationDate"
+                      >
                         <i class="bi bi-calendar me-1"></i>Expiration date
                         <span
                           class="ms-1 text-secondary"
@@ -957,7 +987,10 @@
                         maxlength="4"
                         required
                       />
-                      <div id="cvcFeedback" class="invalid-feedback d-block d-none">
+                      <div
+                        id="cvcFeedback"
+                        class="invalid-feedback d-block d-none"
+                      >
                         <i class="bi bi-exclamation-circle me-1"></i>CVC must be
                         3–4 digits.
                       </div>
@@ -986,12 +1019,16 @@
 
             <!-- SUMMARY -->
             <section id="summary" class="section-pad">
-              <div class="d-flex align-items-center justify-content-between mb-2">
+              <div
+                class="d-flex align-items-center justify-content-between mb-2"
+              >
                 <h2 class="h4 mb-0">
                   Your booking summary
                   <span class="badge text-bg-primary ms-2">Step 4</span>
                 </h2>
-                <span class="badge text-bg-success" id="summaryStatus">Live</span>
+                <span class="badge text-bg-success" id="summaryStatus"
+                  >Live</span
+                >
               </div>
 
               <div class="card shadow-soft border border-primary">
@@ -1014,21 +1051,24 @@
                     <div class="col-12 col-md-6">
                       <div class="fw-semibold mb-1">Date</div>
                       <div class="text-secondary" id="summaryDateLine">
-                        <i class="bi bi-dash me-1"></i>Selected date will appear here
+                        <i class="bi bi-dash me-1"></i>Selected date will appear
+                        here
                       </div>
                     </div>
 
                     <div class="col-12 col-md-6">
                       <div class="fw-semibold mb-1">Start time</div>
                       <div class="text-secondary" id="summaryTimeLine">
-                        <i class="bi bi-dash me-1"></i>Selected time will appear here
+                        <i class="bi bi-dash me-1"></i>Selected time will appear
+                        here
                       </div>
                     </div>
 
                     <div class="col-12">
                       <div class="fw-semibold mb-1">Pickup time</div>
                       <div class="text-secondary" id="summaryPickupLine">
-                        <i class="bi bi-dash me-1"></i>Pickup time will appear here
+                        <i class="bi bi-dash me-1"></i>Pickup time will appear
+                        here
                       </div>
                     </div>
                   </div>
@@ -1124,14 +1164,25 @@
     </main>
 
     <!-- Expert confirmed modal -->
-    <div class="modal fade" id="expertConfirmModal" tabindex="-1" aria-hidden="true">
+    <div
+      class="modal fade"
+      id="expertConfirmModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
             <h3 class="modal-title h5">
-              <i class="bi bi-check2-circle text-success me-2"></i>Mechanic confirmed
+              <i class="bi bi-check2-circle text-success me-2"></i>Mechanic
+              confirmed
             </h3>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body">
             <p class="mb-0">
@@ -1141,7 +1192,11 @@
             </p>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary" type="button" data-bs-dismiss="modal">
+            <button
+              class="btn btn-primary"
+              type="button"
+              data-bs-dismiss="modal"
+            >
               Continue
             </button>
           </div>
@@ -1155,30 +1210,63 @@
         <div class="modal-content">
           <div class="modal-header">
             <h3 class="modal-title h5">
-              <i class="bi bi-check2-circle text-success me-2"></i>Booking received
+              <i class="bi bi-check2-circle text-success me-2"></i>Booking
+              received
             </h3>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body">
             <p class="mb-2">We've recorded your request. Summary:</p>
             <ul class="mb-0">
-              <li><span class="fw-semibold">Mechanic:</span> <span id="modalExpert">—</span></li>
-              <li><span class="fw-semibold">Service:</span> <span id="modalService">—</span></li>
-              <li><span class="fw-semibold">Date:</span> <span id="modalDate">—</span></li>
-              <li><span class="fw-semibold">Start:</span> <span id="modalTime">—</span></li>
-              <li><span class="fw-semibold">Pickup:</span> <span id="modalPickup">—</span></li>
-              <li><span class="fw-semibold">Name:</span> <span id="modalName">—</span></li>
+              <li>
+                <span class="fw-semibold">Mechanic:</span>
+                <span id="modalExpert">—</span>
+              </li>
+              <li>
+                <span class="fw-semibold">Service:</span>
+                <span id="modalService">—</span>
+              </li>
+              <li>
+                <span class="fw-semibold">Date:</span>
+                <span id="modalDate">—</span>
+              </li>
+              <li>
+                <span class="fw-semibold">Start:</span>
+                <span id="modalTime">—</span>
+              </li>
+              <li>
+                <span class="fw-semibold">Pickup:</span>
+                <span id="modalPickup">—</span>
+              </li>
+              <li>
+                <span class="fw-semibold">Name:</span>
+                <span id="modalName">—</span>
+              </li>
             </ul>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary" type="button" data-bs-dismiss="modal">Done</button>
+            <button
+              class="btn btn-primary"
+              type="button"
+              data-bs-dismiss="modal"
+            >
+              Done
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Toast (small feedback notices) -->
-    <div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 1085">
+    <div
+      class="toast-container position-fixed bottom-0 start-0 p-3"
+      style="z-index: 1085"
+    >
       <div
         id="acsToast"
         class="toast align-items-center text-bg-primary border-0"
